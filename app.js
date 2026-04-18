@@ -1950,7 +1950,7 @@ SC.getClientStats=function(clientId){
   return{
     programCount:programs.filter(p=>p&&p.clientId===clientId).length,
     sessionCount:sessions.filter(s=>s&&s.clientId===clientId).length,
-    reportCount:reports.filter(r=>r&&r.clientId===clientId).length
+    reportCount:sessions.filter(s=>s&&s.clientId===clientId&&s.status==='complete').length
   };
 };
 
