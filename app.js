@@ -1266,6 +1266,24 @@ const SC={
     }).join('');
   },
   openEditor(prog){this.edProg=PS.sanitize(Utils.copy(prog));$('#editor-title').textContent=prog.builtIn?'複製內建課表':'編輯自訂課表';$('#editor-program-name').value=this.edProg.name;$('#editor-program-note').value=this.edProg.note||'';this.renderEditorEx();renderAcsmStrip($('#editor-guidance-strip'),this.edProg);Nav.go('screen-editor')},
+  renderWorkoutPreview(){
+    const sel=PS.selected();
+    if(!sel){Toast.show('請先選擇課表');return false}
+    const exs=sel.exercises||[];
+    const totalSets=exs.reduce((n,e)=>n+(Number(e.sets)||0),0);
+    const t=$('#preview-program-title');if(t)t.textContent=sel.name||'訓練預覽';
+    const sub=$('#preview-program-sub');if(sub)sub.textContent=`${sel.category||'Program'} · ${exs.length} 個動作 · ${totalSets} sets`;
+    const head=$('#preview-summary');
+    if(head)head.innerHTML=`<div class="row between wrap"><div class="kv"><div class="k">課表</div><div class="v">${Utils.escape(sel.name||'')}</div></div><div class="row wrap"><span class="pill">${exs.length} 個動作</span><span class="pill">${totalSets} sets</span>${sel.builtIn?'<span class="pill">內建</span>':'<span class="pill">自訂</span>'}</div></div>${sel.note?`<div class="subtle">${Utils.escape(sel.note)}</div>`:''}`;
+    const list=$('#preview-exercise-list');
+    if(list){
+      list.innerHTML=exs.length?exs.map((ex,i)=>{
+        const nm=exDisplayName(ex);
+        return `<div class="item"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(nm)}</h3><div class="meta"><span>${ex.sets} sets</span><span>${ex.repMin}-${ex.repMax} reps</span><span>RIR ${ex.rir}</span><span>休息 ${ex.restSec}s</span></div>${ex.notes?`<div class="subtle" style="margin-top:6px">${Utils.escape(ex.notes)}</div>`:''}</div></div>`;
+      }).join(''):'<div class="empty">此課表沒有動作</div>';
+    }
+    return true;
+  },
   addEditorEx(ek,afterId=null){if(!this.edProg)return;const item={exerciseKey:ek,sets:3,repMin:8,repMax:12,rir:2,restSec:60,notes:''};if(afterId){const i=this.edProg.exercises.findIndex(e=>e._id===afterId);if(i>=0)this.edProg.exercises.splice(i+1,0,item);else this.edProg.exercises.push(item)}else this.edProg.exercises.push(item);this.edProg.exercises.forEach(e=>{if(!e._id)e._id=Utils.uid('ee')});this.renderEditorEx()},
   moveEditorEx(id,dir){if(!this.edProg)return false;const l=this.edProg.exercises;const i=l.findIndex(e=>e._id===id);if(i<0)return false;const ni=Utils.clamp(i+dir,0,l.length-1);if(ni===i)return false;const[item]=l.splice(i,1);l.splice(ni,0,item);this.renderEditorEx();requestAnimationFrame(()=>{const c=document.querySelector(`[data-editor-ex="${id}"]`);if(c)c.scrollIntoView({block:'nearest',behavior:'smooth'})});return true},
   renderEditorEx(){if(!this.edProg)return;const l=$('#editor-exercise-list');this.edProg.exercises.forEach(e=>{if(!e._id)e._id=Utils.uid('ee')});l.innerHTML=this.edProg.exercises.map((ex,i)=>`<div class="editor-card" data-editor-ex="${ex._id}"><div class="editor-top"><div class="exercise-select"><button class="select-trigger" data-action="editor-pick-exercise" data-id="${ex._id}"><span>${Utils.escape(exDisplayName(ex))}</span><strong>▾</strong></button></div><div class="editor-top-actions"><button class="order-btn" data-action="editor-move-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="editor-move-down" data-id="${ex._id}" ${i===this.edProg.exercises.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="remove-editor-exercise" data-id="${ex._id}">×</button></div></div><div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="12" value="${ex.sets}" data-action="editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="50" value="${ex.repMin}" data-action="editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="editor-field" data-id="${ex._id}" data-field="repMax"></div></div><details class="editor-advanced"><summary>進階設定 / 備註</summary><div class="editor-advanced-body"><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="15" max="600" value="${ex.restSec}" data-action="editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="editor-field" data-id="${ex._id}" data-field="notes" placeholder="動作目標、線索、風險提醒...">${Utils.escape(ex.notes||'')}</textarea></div></div></details></div>`).join('');this.closeDD()},
@@ -1359,7 +1377,8 @@ function handleAction(action,el){
     case 'editor-move-down':if(SC.moveEditorEx(el.dataset.id,1))Toast.show('已下移動作');break;
     case 'remove-editor-exercise':if(!SC.edProg)return;SC.edProg.exercises=SC.edProg.exercises.filter(e=>e._id!==el.dataset.id);SC.renderEditorEx();break;
     case 'editor-pick-exercise':EL.open('editor-replace',el.dataset.id);break;
-    case 'start-workout':if(WK.session){Timer.startE();SC.renderWorkout();Nav.go('screen-workout');Toast.show('已回到未完成訓練');break}{const sel=PS.selected();if(!sel)return Toast.show('請先選擇課表');WK.start(sel.id)}break;
+    case 'start-workout':if(WK.session){Timer.startE();SC.renderWorkout();Nav.go('screen-workout');Toast.show('已回到未完成訓練');break}{const sel=PS.selected();if(!sel)return Toast.show('請先選擇課表');if(SC.renderWorkoutPreview())Nav.go('screen-workout-preview')}break;
+    case 'confirm-start-workout':{const sel=PS.selected();if(!sel)return Toast.show('請先選擇課表');WK.start(sel.id)}break;
     case 'resume-workout':if(!WK.session)return Toast.show('目前沒有訓練草稿');Timer.startE();SC.renderWorkout();Nav.go('screen-workout');break;
     case 'discard-workout-draft':if(!WK.session)return Toast.show('目前沒有訓練草稿');if(confirm('捨棄目前未完成訓練？這會清除本次草稿。')){Timer.stopE();Timer.stopR();WK.session=null;WK.clearDraft();SC.renderHome();Toast.show('已捨棄草稿')}break;
     case 'leave-workout':if(confirm('離開訓練畫面？未完成內容會保留在草稿。')){Timer.stopE();Timer.stopR();Nav.go('screen-home');SC.renderHome()}break;

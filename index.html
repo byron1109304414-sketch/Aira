@@ -108,6 +108,18 @@
       </section>
     </main>
 
+    <!-- [3.5] WORKOUT PREVIEW — display-only, before WK.start -->
+    <main class="screen" id="screen-workout-preview">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回">‹</button><div class="hdr-title"><strong id="preview-program-title">訓練預覽</strong><span id="preview-program-sub">—</span></div></div>
+        <button class="btn primary" data-action="confirm-start-workout" title="開始這份訓練">開始訓練</button>
+      </div>
+      <section class="stack">
+        <div class="card pad stack" id="preview-summary"></div>
+        <div class="list" id="preview-exercise-list"></div>
+      </section>
+    </main>
+
     <!-- [4] WORKOUT SESSION — hdr inside wt-shell (PZ-03) -->
     <main class="screen" id="screen-workout">
       <div class="wt-shell">
