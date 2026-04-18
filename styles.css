@@ -6033,3 +6033,27 @@ textarea::placeholder,
 /* ============================================================
    End Section 52.
    ============================================================ */
+
+/* ============================================================
+   Section 53. Workout page — information hierarchy / sticky compression
+   Added: 2026-04-18. Scoped strictly to #screen-workout. Display-only.
+   Goals:
+     1. Collapsed card becomes operation mode — set-list + main actions
+        stay visible; only `.workout-secondary-details` hides. Overrides
+        the global `.exercise-card.collapsed .exercise-body{display:none}`
+        without touching the global rule.
+     2. Sticky top stack trimmed: hdr / wt-bar / guidance-strip / step-bar
+        padding slightly compressed. No reflow of layout regions.
+   Does NOT touch: data flow, data-action bindings, events, draft/resume/
+   finish paths, coach mode, other screens, core modules.
+   Rollback: delete this entire Section 53 block.
+   ============================================================ */
+#screen-workout .exercise-card.collapsed .exercise-body{display:block}
+#screen-workout .exercise-card.collapsed .workout-secondary-details{display:none}
+#screen-workout .hdr{padding-top:6px;padding-bottom:6px}
+#screen-workout .wt-bar{padding:6px 12px 8px;gap:4px}
+#screen-workout .guidance-strip{padding:7px 10px;margin:4px 0}
+#screen-workout .step-bar{padding:2px 0 6px}
+/* ============================================================
+   End Section 53.
+   ============================================================ */
