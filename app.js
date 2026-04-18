@@ -1236,13 +1236,20 @@ const SC={
   renderHome(){const s=PS.selected();$('#home-date-label').textContent=Utils.formatDate(Utils.today());$('#home-program-name').textContent=s?s.name:'尚未選擇課表';$('#home-program-meta').textContent=s?`${s.category||'Program'} · ${(s.exercises||[]).length} 個動作`:'請先選擇今天要使用的課表。';
     const weekStartTs=new Date(Utils.weekStart(Utils.today())+'T00:00:00').getTime();$('#home-week-count').textContent=String(DB.data.workouts.filter(w=>w.startedAt>=weekStartTs).length);const dc=$('#home-draft-card');const pr=WK.progress();const cb=$('[data-action="start-workout"]',$('#screen-home'));if(cb)cb.textContent=WK.session?'繼續訓練':'開始訓練';if(WK.session){dc.classList.remove('hidden');$('#home-draft-title').textContent=`未完成訓練｜${WK.session.programName}`;$('#home-draft-meta').textContent=`${Utils.formatDateTime(WK.session.startedAt)} · ${pr.done}/${pr.total||0} sets`}else{dc.classList.add('hidden')}},
   programSearchQ:'',
+  programFilter:'all',
   renderPrograms(){
     const s=PS.selected();
     $('#selected-program-name').textContent=s?.name||'—';
     $('#selected-program-meta').textContent=s?`${s.category||'Program'} · ${(s.exercises||[]).length} 個動作`:'尚未選擇';
     const all=PS.getAll();
+    const cats=Array.from(new Set(all.map(p=>String(p.category||'').trim()).filter(Boolean))).sort();
+    const chips=[['all','全部'],...cats.map(c=>[c,c])];
+    if(!chips.find(([k])=>k===this.programFilter))this.programFilter='all';
+    const fEl=$('#program-filters');
+    if(fEl)fEl.innerHTML=chips.map(([k,l])=>`<button class="chip ${this.programFilter===k?'active':''}" data-action="program-filter" data-filter="${Utils.escape(k)}">${Utils.escape(l)}</button>`).join('');
+    const byCat=this.programFilter==='all'?all:all.filter(p=>String(p.category||'').trim()===this.programFilter);
     const q=this.programSearchQ||'';
-    const list=q?searchPlans(q,all):all;
+    const list=q?searchPlans(q,byCat):byCat;
     const empty=!list.length?'<div class="empty">找不到符合的課表</div>':'';
     $('#program-list').innerHTML=empty||list.map(p=>{
       const iS=p.id===DB.data.selectedProgramId;
@@ -1376,6 +1383,7 @@ function handleAction(action,el){
     case 'save-science-profile':saveSciProfile();break;
     case 'apply-recommended-program':PS.select(el.dataset.id);SC.renderPrograms();SC.renderScience();SC.renderHome();Toast.show('已套用推薦課表');break;
     case 'history-filter':SC.hFilter=el.dataset.filter;SC.renderHistory();break;
+    case 'program-filter':SC.programFilter=el.dataset.filter||'all';SC.renderPrograms();break;
     case 'open-detail':SC.openDetail(el.dataset.id);break;
     case 'select-strength':SC.strEx=el.dataset.name;SC.renderStrength();break;
     case 'export-data':Utils.download(`aira-tracker-v4-${Utils.today()}.json`,JSON.stringify(DB.data,null,2));Toast.show('已匯出資料');break;
