@@ -6057,3 +6057,30 @@ textarea::placeholder,
 /* ============================================================
    End Section 53.
    ============================================================ */
+
+/* ============================================================
+   Section 54. Home top-bar date centering fix (display-only).
+   Added: 2026-04-18. Scoped strictly to #screen-home.
+   Problem: Global `.home-top` uses `auto | minmax(0,1fr) | auto`.
+   When the right version pill grew from `v4.0.0` (5ch) to
+   `v4.1.0-stable` (13ch), the right auto column expanded while
+   the left stayed at `Aira` width — the middle 1fr column is no
+   longer symmetric between the two auto columns, so the date
+   appears shifted toward the shorter (left) side instead of
+   visually centered on the viewport.
+   Fix: Replace the middle-column asymmetry with a symmetric
+   3-column grid (1fr | auto | 1fr) scoped only to #screen-home.
+   Both 1fr columns are mathematically equal regardless of pill
+   widths, so the middle auto column (the date) is always
+   visually centered. Pills use justify-self:start/end to stay
+   pinned at their natural sizes against the container edges.
+   Does NOT touch global .home-top rule. Does NOT touch HTML.
+   Does NOT affect any other screen.
+   Rollback: delete this Section 54 block.
+   ============================================================ */
+#screen-home .home-top{grid-template-columns:1fr auto 1fr}
+#screen-home .home-top > .pill:first-child{justify-self:start}
+#screen-home .home-top > .pill:last-child{justify-self:end}
+/* ============================================================
+   End Section 54.
+   ============================================================ */
