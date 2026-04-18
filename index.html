@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0b1018">
+  <title>Aira Training Tracker v4</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- [1] HOME -->
+    <main class="screen active" id="screen-home">
+      <div class="home-layout">
+        <div class="home-top">
+          <div class="pill">Aira</div>
+          <span class="home-date" id="home-date-label"></span>
+          <div class="pill" id="home-version-pill">v4.0</div>
+        </div>
+        <div class="home-hero-slim">
+          <div class="home-hero-head">
+            <div class="home-hero-info">
+              <div class="home-kicker">Today</div>
+              <h1 class="home-title">今日訓練</h1>
+              <div class="home-program" id="home-program-name">尚未選擇課表</div>
+              <div class="home-meta" id="home-program-meta">請先選擇今天要使用的課表。</div>
+            </div>
+            <div class="pill home-week-pill">
+              <span class="home-week-label">本週</span>
+              <strong id="home-week-count">0</strong>
+              <span class="home-week-unit">次</span>
+            </div>
+          </div>
+          <div class="home-cta">
+            <button class="btn primary full" data-action="start-workout">開始訓練</button>
+            <button class="home-cta-alt" data-action="open-programs">換課表</button>
+          </div>
+        </div>
+        <div class="home-draft hidden" id="home-draft-card">
+          <div class="home-draft-info">
+            <strong class="home-draft-title" id="home-draft-title">有未完成訓練</strong>
+            <span class="home-draft-meta" id="home-draft-meta">—</span>
+          </div>
+          <div class="home-draft-actions">
+            <button class="btn primary" data-action="resume-workout">繼續</button>
+            <button class="btn danger" data-action="discard-workout-draft">捨棄</button>
+          </div>
+        </div>
+        <section class="home-panel" aria-label="快速入口">
+          <div class="home-panel-head">
+            <h2 class="home-panel-title">快速入口</h2>
+            <span class="home-panel-sub">常用功能</span>
+          </div>
+          <div class="home-grid">
+            <button class="home-card home-card-main" data-action="open-programs"><strong>課表</strong><span>內建、自訂與切換</span></button>
+            <button class="home-card home-card-main" data-action="open-history"><strong>記錄</strong><span>歷史訓練與 PR</span></button>
+            <button class="home-card home-card-accent" data-action="open-reports"><strong>AI 報告</strong><span>日報 · 週報 · 匯出</span></button>
+            <button class="home-card" data-action="open-weight"><strong>體重</strong><span>趨勢追蹤</span></button>
+          </div>
+          <div class="home-tools">
+            <button class="home-mini-btn" data-action="open-cardio">有氧</button>
+            <button class="home-mini-btn" data-action="open-strength">力量趨勢</button>
+            <button class="home-mini-btn" data-action="open-science">科學模式</button>
+            <button class="home-mini-btn" data-action="open-settings">設定</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- [2] PROGRAMS -->
+    <main class="screen" id="screen-programs">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>課表</strong><span>內建 / 自訂 / 編輯</span></div></div>
+        <button class="btn" data-action="create-custom-program">新增自訂</button>
+      </div>
+      <section class="stack">
+        <div class="section"><h2 class="card-title">今天使用中</h2>
+          <div class="card pad"><div class="row between wrap"><div><div class="block-title" id="selected-program-name">—</div><div class="subtle" id="selected-program-meta">尚未選擇</div></div><button class="btn primary" data-action="start-workout">開始</button></div></div>
+        </div>
+        <div class="section"><h2 class="card-title">所有課表</h2>
+          <div class="field" style="margin-bottom:8px"><input id="program-search" type="search" placeholder="搜尋課表、分類、目標（例：上半身 / Push / 全身 / 減脂）"></div>
+          <div class="list" id="program-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- [3] EDITOR -->
+    <main class="screen" id="screen-editor">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-programs" aria-label="返回課表">‹</button><div class="hdr-title"><strong id="editor-title">編輯課表</strong><span>自訂與內建課表</span></div></div>
+        <button class="btn primary" data-action="save-program">儲存</button>
+      </div>
+      <section class="stack">
+        <div class="card pad stack">
+          <div class="field"><label>課表名稱</label><input id="editor-program-name" placeholder="例如：Push C / Upper Lower Hybrid"></div>
+          <div class="field"><label>簡介</label><textarea id="editor-program-note" class="notes" placeholder="可輸入課表定位、訓練重點、提醒事項"></textarea></div>
+          <div class="toolbar">
+            <button class="btn" data-action="editor-add-exercise">新增動作</button>
+            <button class="btn" data-action="editor-copy-template">複製成新課表</button>
+          </div>
+        </div>
+        <div class="guidance-strip" id="editor-guidance-strip" hidden></div>
+        <div class="editor-grid" id="editor-exercise-list"></div>
+      </section>
+    </main>
+
+    <!-- [4] WORKOUT SESSION — hdr inside wt-shell (PZ-03) -->
+    <main class="screen" id="screen-workout">
+      <div class="wt-shell">
+        <div class="hdr">
+          <div class="row"><button class="icon-btn" data-action="leave-workout" aria-label="離開訓練" title="離開訓練">‹</button><div class="hdr-title"><strong id="workout-program-title">Workout</strong><span id="workout-program-sub">準備開始</span></div></div>
+          <button class="btn primary" data-action="finish-workout" title="完成並儲存本次訓練">完成訓練</button>
+        </div>
+        <div class="wt-bar">
+          <div class="wt-bar-top"><span id="elapsed-label">00:00</span><span id="progress-label">0 / 0 sets</span></div>
+          <div class="progress-track"><div class="progress-fill" id="workout-progress-fill"></div></div>
+        </div>
+        <div class="guidance-strip" id="workout-guidance-strip" hidden></div>
+        <div class="step-bar"><div class="step-scroll" id="step-scroll"></div></div>
+        <div class="stack" id="workout-exercises"></div>
+        <div class="add-ex-bar"><button class="btn full ghost add-ex-subtle" data-action="workout-open-library" title="從動作庫新增動作">從動作庫新增</button></div>
+      </div>
+    </main>
+
+    <!-- [5] SUMMARY -->
+    <main class="screen" id="screen-summary">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>訓練完成</strong><span id="summary-date-label">summary</span></div></div>
+      </div>
+      <section class="stack">
+        <div class="summary-grid" id="summary-top"></div>
+        <div class="card pad stack">
+          <div class="row between wrap"><h2 class="card-title">PR / 建議重量</h2></div>
+          <div class="list" id="summary-list"></div>
+        </div>
+        <div class="card pad stack">
+          <div class="field"><label>訓練備註</label><textarea id="summary-session-note" class="notes" placeholder="今天的感受、狀態..."></textarea></div>
+          <button class="btn" data-action="save-session-note">儲存備註</button>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" data-action="generate-daily-report">生成 AI 日報</button>
+          <button class="btn" data-action="back-home">返回首頁</button>
+          <button class="btn" data-action="open-history">查看記錄</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- [6] HISTORY -->
+    <main class="screen" id="screen-history">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>記錄</strong><span>單次訓練 / 動作趨勢</span></div></div></div>
+      <section class="stack"><div class="seg" id="history-filters"></div><div class="list" id="history-list"></div></section>
+    </main>
+
+    <!-- [7] DETAIL -->
+    <main class="screen" id="screen-detail">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-history" aria-label="返回記錄">‹</button><div class="hdr-title"><strong>單次訓練詳情</strong><span id="detail-meta">—</span></div></div></div>
+      <section class="stack"><div class="history-block" id="detail-head"></div><div class="list" id="detail-exercises"></div></section>
+    </main>
+
+    <!-- [8] STRENGTH -->
+    <main class="screen" id="screen-strength">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>力量趨勢</strong><span>主要動作與單動作趨勢</span></div></div></div>
+      <section class="stack">
+        <div class="seg" id="strength-selector"></div>
+        <div class="chart-card"><div class="row between wrap"><div><div class="block-title" id="strength-chart-title">趨勢</div><div class="subtle" id="strength-chart-sub">依歷史最佳組估計</div></div></div><div class="chart-wrap"><canvas id="strength-canvas" width="720" height="240"></canvas></div><div class="footnote" id="strength-footnote">尚無資料。</div></div>
+      </section>
+    </main>
+
+    <!-- [9] WEIGHT — P1 Stable Baseline protected -->
+    <main class="screen" id="screen-weight">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>體重</strong><span>基本趨勢</span></div></div></div>
+      <section class="stack">
+        <div class="card pad stack">
+          <div class="inline-grid">
+            <div class="field"><label>日期</label><input id="weight-date" type="date"></div>
+            <div class="field"><label>體重（kg）</label><input id="weight-value" type="number" inputmode="decimal" step="0.1" placeholder="73.0"></div>
+          </div>
+          <button class="btn primary full" data-action="save-weight">儲存體重</button>
+        </div>
+        <div class="chart-card"><div class="row between wrap"><div class="block-title">體重走勢</div><div class="subtle" id="weight-count">0 筆</div></div><div class="chart-wrap"><canvas id="weight-canvas" width="720" height="240"></canvas></div></div>
+        <div class="list" id="weight-list"></div>
+      </section>
+    </main>
+
+    <!-- [10] CARDIO — P1 Stable Baseline protected -->
+    <main class="screen" id="screen-cardio">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>有氧</strong><span>穩定版紀錄</span></div></div></div>
+      <section class="stack">
+        <div class="card pad stack">
+          <div class="inline-grid">
+            <div class="field"><label>日期</label><input id="cardio-date" type="date"></div>
+            <div class="field"><label>類型</label><input id="cardio-type" placeholder="跑步 / 單車 / 滑步機"></div>
+          </div>
+          <div class="fine-grid">
+            <div class="field"><label>分鐘</label><input id="cardio-minutes" type="number" inputmode="numeric" placeholder="20"></div>
+            <div class="field"><label>距離（km）</label><input id="cardio-distance" type="number" inputmode="decimal" step="0.1" placeholder="3.0"></div>
+            <div class="field"><label>卡路里</label><input id="cardio-calories" type="number" inputmode="numeric" placeholder="250"></div>
+          </div>
+          <div class="field"><label>備註</label><textarea id="cardio-note" class="notes" placeholder="可記錄心率、坡度、感受"></textarea></div>
+          <button class="btn primary full" data-action="save-cardio">儲存有氧</button>
+        </div>
+        <div class="list" id="cardio-list"></div>
+      </section>
+    </main>
+
+    <!-- [11] SCIENCE -->
+    <main class="screen" id="screen-science">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>科學模式</strong><span>ACSM × 解剖 × 個人化</span></div></div></div>
+      <section class="stack">
+        <div class="summary-grid" id="science-top"></div>
+        <div class="card pad stack">
+          <div class="row between wrap"><h2 class="card-title">個人化科學設定</h2><span class="pill" id="science-profile-badge">—</span></div>
+          <div class="inline-grid">
+            <div class="field"><label>目標</label><select id="science-goal"><option value="general_health">一般健康</option><option value="muscle_gain">增肌</option><option value="strength">力量</option><option value="fat_loss">減脂</option><option value="cardio_endurance">心肺耐力</option><option value="functional">功能性</option><option value="rehab">復健 / 重返訓練</option></select></div>
+            <div class="field"><label>訓練等級</label><select id="science-level"><option value="beginner">初學</option><option value="intermediate">中階</option><option value="advanced">進階</option></select></div>
+          </div>
+          <div class="inline-grid">
+            <div class="field"><label>單次訓練時間（分鐘）</label><input id="science-session-min" type="number" inputmode="numeric" min="20" max="180" step="5" placeholder="60"></div>
+            <div class="field"><label>器材環境</label><select id="science-equipment"><option value="full_gym">完整健身房</option><option value="dumbbell_only">啞鈴 / 簡易器材</option><option value="home">居家 / 自體重</option></select></div>
+          </div>
+          <div class="field"><label>注意部位</label>
+            <div class="science-check-grid"><label class="science-check"><input id="science-knee" type="checkbox"> 膝</label><label class="science-check"><input id="science-shoulder" type="checkbox"> 肩</label><label class="science-check"><input id="science-lowback" type="checkbox"> 下背</label></div>
+          </div>
+          <div class="toolbar"><button class="btn primary" data-action="save-science-profile">儲存科學設定</button></div>
+          <div class="footnote">這一頁不會取代你的自由編排，而是用來提供更符合目標的次數、休息、課表與安全提醒。</div>
+        </div>
+        <div class="card pad stack"><div class="row between wrap"><h2 class="card-title">推薦課表</h2><span class="pill" id="science-recommendation-label">—</span></div><div class="list" id="science-recommendations"></div></div>
+        <div class="card pad stack"><div class="row between wrap"><h2 class="card-title">App 會怎麼套用</h2><span class="pill">收合時仍維持極簡</span></div><div class="list" id="science-rules-list"></div></div>
+      </section>
+    </main>
+
+    <!-- [12] REPORTS (V4 NEW) -->
+    <main class="screen" id="screen-reports">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>AI 報告</strong><span>日報 · 週報 · 匯出</span></div></div></div>
+      <section class="stack">
+        <div class="card pad stack">
+          <h2 class="card-title">每日報告</h2>
+          <div class="subtle">選擇日期生成當日訓練報告，可直接複製給 AI 教練。</div>
+          <div class="field"><label>日期</label><input id="report-daily-date" type="date"></div>
+          <button class="btn primary full" data-action="generate-daily-report-page">生成日報</button>
+        </div>
+        <div class="card pad stack hidden" id="daily-report-card">
+          <div class="row between wrap"><h2 class="card-title">日報內容</h2><span class="pill" id="daily-report-date-badge">—</span></div>
+          <div class="report-content" id="daily-report-content"></div>
+          <div class="report-actions">
+            <button class="btn" data-action="copy-daily-summary">複製摘要</button>
+            <button class="btn primary" data-action="copy-daily-ai-prompt">複製 AI Prompt</button>
+            <button class="btn" data-action="export-daily-md">匯出 Markdown</button>
+            <button class="btn" data-action="export-daily-json">匯出 JSON</button>
+          </div>
+        </div>
+        <div class="card pad stack">
+          <h2 class="card-title">每週報告</h2>
+          <div class="subtle">自動彙整本週或指定週的訓練數據。</div>
+          <div class="field"><label>週起始日（週一）</label><input id="report-weekly-date" type="date"></div>
+          <button class="btn primary full" data-action="generate-weekly-report">生成週報</button>
+        </div>
+        <div class="card pad stack hidden" id="weekly-report-card">
+          <div class="row between wrap"><h2 class="card-title">週報內容</h2><span class="pill" id="weekly-report-range-badge">—</span></div>
+          <div class="report-content" id="weekly-report-content"></div>
+          <div class="report-actions">
+            <button class="btn" data-action="copy-weekly-summary">複製摘要</button>
+            <button class="btn primary" data-action="copy-weekly-ai-prompt">複製 AI Prompt</button>
+            <button class="btn" data-action="export-weekly-md">匯出 Markdown</button>
+            <button class="btn" data-action="export-weekly-json">匯出 JSON</button>
+          </div>
+        </div>
+        <div class="card pad stack">
+          <h2 class="card-title">匯出全部</h2>
+          <div class="subtle">匯出完整數據包給 AI 教練做長期分析。</div>
+          <div class="report-actions">
+            <button class="btn" data-action="export-full-json">完整 JSON</button>
+            <button class="btn" data-action="export-full-md">完整 Markdown</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- [13] SETTINGS -->
+    <main class="screen" id="screen-settings">
+      <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>設定</strong><span>資料管理與版本資訊</span></div></div></div>
+      <section class="settings-list">
+        <div class="settings-row"><div class="kv"><div class="k">版本</div><div class="v" id="settings-version-value">4.0.0</div></div><div class="footnote">controlled rebuild from v3</div><div class="mono" id="settings-data-stats">index.html / styles.css / app.js / localStorage</div></div>
+        <div class="settings-row"><div class="kv"><div class="k">教練模式</div><div class="v">Clients / coaching data</div></div><button class="btn" data-action="open-coach-clients">進入</button></div>
+        <div class="settings-row"><div class="kv"><div class="k">資料匯出</div><div class="v">JSON</div></div><div class="toolbar"><button class="btn" data-action="export-data">匯出資料</button><label class="btn">匯入資料<input id="import-file" type="file" accept="application/json" class="hidden"></label></div></div>
+        <div class="settings-row danger-zone"><div class="kv"><div class="k">危險操作</div><div class="v">清空所有 localStorage 資料</div></div><button class="btn danger" data-action="wipe-data">清空資料</button></div>
+      </section>
+    </main>
+
+    <!-- [14] COACH CLIENTS (Client Coaching Module v1 — Step 2) -->
+    <main class="screen" id="screen-coach-clients">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-coach-clients" aria-label="返回設定">‹</button><div class="hdr-title"><strong>教練模式 · 學員</strong><span>學員管理</span></div></div>
+        <button class="btn primary" data-action="coach-new-client">新增學員</button>
+      </div>
+      <section class="stack">
+        <div class="card pad coach-summary" id="coach-clients-summary"></div>
+        <div class="coach-client-search"><input id="coach-client-search" type="search" placeholder="搜尋學員姓名、標籤、目標或排課備註" autocomplete="off" spellcheck="false"></div>
+        <div class="toolbar"><button class="btn" data-action="coach-toggle-archived" id="coach-archived-toggle">顯示封存</button></div>
+        <div class="section"><h2 class="card-title">目前學員</h2><div class="list coach-list" id="coach-active-list"></div></div>
+        <div class="section hidden" id="coach-archived-section"><h2 class="card-title">封存學員</h2><div class="list coach-list" id="coach-archived-list"></div></div>
+      </section>
+    </main>
+
+    <!-- [15] COACH PROGRAMS (Client Coaching Module v1 — Step 3) -->
+    <main class="screen" id="screen-coach-programs">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-coach-programs" aria-label="返回學員">‹</button><div class="hdr-title"><strong>教練模式</strong><span>Client Programs</span></div></div>
+        <button class="btn primary" data-action="coach-new-program">新增課表</button>
+      </div>
+      <section class="stack">
+        <div class="card pad coach-program-summary" id="coach-program-summary"></div>
+        <div class="toolbar coach-program-export-toolbar"><button class="btn" data-action="coach-open-active-program-export" id="coach-open-active-program-export">輸出使用中課表</button></div>
+        <div class="section"><h2 class="card-title">學員課表</h2><div class="list coach-program-list" id="coach-program-list"></div></div>
+      </section>
+    </main>
+
+    <!-- [16] COACH PROGRAM EDITOR (Client Coaching Module v1 — Step 3) -->
+    <main class="screen" id="screen-coach-program-editor">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-coach-program-editor" aria-label="返回課表">‹</button><div class="hdr-title"><strong id="coach-program-editor-title">新增課表</strong><span id="coach-program-editor-sub">Client Program</span></div></div>
+        <button class="btn primary" data-action="coach-save-program">儲存</button>
+      </div>
+      <section class="stack">
+        <div class="card pad stack">
+          <div class="field"><label>課表名稱</label><input id="coach-program-editor-name" placeholder="例如：Push A / 下肢肌力"></div>
+          <div class="field"><label>簡介</label><textarea id="coach-program-editor-note" class="notes" placeholder="可輸入課表重點、安全提醒"></textarea></div>
+          <div class="toolbar">
+            <button class="btn" data-action="coach-editor-add-exercise">新增動作</button>
+            <button class="btn hidden" id="coach-program-editor-copy" data-action="coach-copy-program">複製為新課表</button>
+          </div>
+        </div>
+        <div class="coach-program-editor-list" id="coach-program-editor-exercise-list"></div>
+      </section>
+    </main>
+
+    <!-- [17] COACH WORKOUT (Client Coaching Module v1 — Step 4) -->
+    <main class="screen" id="screen-coach-workout">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="leave-coach-workout" aria-label="離開訓練">‹</button><div class="hdr-title"><strong id="coach-workout-title">教練訓練</strong><span id="coach-workout-sub">Coach Session</span></div></div>
+        <button class="btn primary" data-action="finish-coach-workout">完成</button>
+      </div>
+      <section class="stack">
+        <div class="card pad coach-workout-summary">
+          <div class="coach-workout-summary-grid">
+            <div class="coach-workout-summary-cell"><div class="k">學員</div><div class="v" id="coach-workout-client-name">—</div></div>
+            <div class="coach-workout-summary-cell"><div class="k">課表</div><div class="v" id="coach-workout-program-name">—</div></div>
+            <div class="coach-workout-summary-cell"><div class="k">計時</div><div class="v num" id="coach-workout-elapsed">00:00</div></div>
+          </div>
+          <div class="coach-workout-progress">
+            <div class="coach-workout-progress-top"><span id="coach-workout-progress-text">0 / 0 組完成</span></div>
+            <div class="progress-track"><div class="progress-fill" id="coach-workout-progress-fill"></div></div>
+          </div>
+        </div>
+        <div class="coach-workout-exercise-list" id="coach-workout-exercise-list"></div>
+        <div class="coach-workout-actions">
+          <button class="btn ghost" data-action="coach-workout-open-add-picker">＋ 新增動作</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- [18] COACH REPORTS (Client Coaching Module v1 — Step 5B) -->
+    <main class="screen" id="screen-coach-reports">
+      <div class="hdr">
+        <div class="row"><button class="icon-btn" data-action="back-coach-reports" aria-label="返回學員">‹</button><div class="hdr-title"><strong id="coach-reports-title">教練模式</strong><span id="coach-reports-sub">課程紀錄</span></div></div>
+      </div>
+      <section class="stack">
+        <div class="card pad coach-reports-summary" id="coach-reports-summary"></div>
+        <div class="section"><h2 class="card-title">已完成課程</h2><div class="list coach-report-list" id="coach-reports-list"></div></div>
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Library Sheet (PZ-06: close button + backdrop) -->
+  <div class="sheet" id="library-sheet" aria-hidden="true">
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="library-title">
+      <div class="sheet-top">
+        <div class="sheet-grab"></div>
+        <div class="sheet-head">
+          <div><strong id="library-title">動作庫</strong><span id="library-sub">點選動作加入</span></div>
+          <button class="icon-btn" data-action="close-library" aria-label="關閉動作庫">×</button>
+        </div>
+      </div>
+      <div class="sheet-search"><input id="library-search" placeholder="搜尋動作、分類、器材"></div>
+      <div class="sheet-list" id="library-list"></div>
+    </div>
+  </div>
+
+  <!-- Coach Client Sheet (Client Coaching Module v1 — Step 2, independent from library-sheet) -->
+  <div class="coach-sheet" id="coach-client-sheet" aria-hidden="true">
+    <div class="coach-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="coach-client-sheet-title">
+      <div class="coach-sheet-head">
+        <div><strong id="coach-client-sheet-title">新增學員</strong><span id="coach-client-sheet-sub">填寫基本資訊</span></div>
+        <button class="icon-btn" data-action="coach-close-client-sheet" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-sheet-body">
+        <div class="field"><label>姓名</label><input id="coach-client-name" placeholder="學員姓名"></div>
+        <div class="inline-grid">
+          <div class="field"><label>性別</label><select id="coach-client-gender"><option value="">未指定</option><option value="female">女</option><option value="male">男</option><option value="other">其他</option></select></div>
+          <div class="field"><label>年齡</label><input id="coach-client-age" type="number" inputmode="numeric" min="0" max="120" placeholder="例：32"></div>
+        </div>
+        <div class="inline-grid">
+          <div class="field"><label>身高 (cm)</label><input id="coach-client-height" type="number" inputmode="decimal" step="0.1" min="0" max="260" placeholder="例：168"></div>
+          <div class="field"><label>體重 (kg)</label><input id="coach-client-weight" type="number" inputmode="decimal" step="0.1" min="0" max="400" placeholder="例：60"></div>
+        </div>
+        <div class="field"><label>訓練目標</label><input id="coach-client-goal" placeholder="例：增肌 / 減脂 / 功能性"></div>
+        <div class="field"><label>標籤（用逗號分隔）</label><input id="coach-client-tags" placeholder="例：週二晚, 初學, 膝傷"></div>
+        <div class="field"><label>上課時段備註</label><input id="coach-client-schedule" placeholder="例：每週二 19:30"></div>
+        <div class="field"><label>備註</label><textarea id="coach-client-note" class="notes" placeholder="個人狀況、過往傷病、其他注意事項"></textarea></div>
+      </div>
+      <div class="coach-sheet-foot">
+        <button class="btn" data-action="coach-close-client-sheet">取消</button>
+        <button class="btn primary" data-action="coach-save-client">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coach Exercise Picker (Client Coaching Module v1 — Step 3, independent from library-sheet / coach-sheet) -->
+  <div class="coach-picker" id="coach-exercise-picker" aria-hidden="true">
+    <div class="coach-picker-panel" role="dialog" aria-modal="true" aria-labelledby="coach-picker-title">
+      <div class="coach-picker-head">
+        <div><strong id="coach-picker-title">動作庫</strong><span>點選加入課表</span></div>
+        <button class="icon-btn" data-action="coach-close-program-picker" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-picker-search"><input id="coach-program-picker-search" placeholder="搜尋動作、分類、器材"></div>
+      <div class="coach-picker-list" id="coach-program-picker-list"></div>
+    </div>
+  </div>
+
+  <!-- Coach Workout Picker (Client Coaching Module v1 — Step 4.5, independent from library-sheet / coach-sheet / coach-exercise-picker) -->
+  <div class="coach-workout-picker" id="coach-workout-picker" aria-hidden="true">
+    <div class="coach-workout-picker-panel" role="dialog" aria-modal="true" aria-labelledby="coach-workout-picker-title">
+      <div class="coach-workout-picker-head">
+        <div><strong id="coach-workout-picker-title">選擇動作</strong><span id="coach-workout-picker-sub">加入本次訓練</span></div>
+        <button class="icon-btn" data-action="coach-workout-close-picker" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-workout-picker-search"><input id="coach-workout-picker-search" placeholder="搜尋動作、分類、器材"></div>
+      <div class="coach-workout-picker-list" id="coach-workout-picker-list"></div>
+    </div>
+  </div>
+
+  <!-- Coach Program Export Sheet (Client Coaching Module v1 — Step 5A, independent from library-sheet / coach-sheet / coach-picker / coach-workout-picker) -->
+  <div class="coach-program-export-sheet" id="coach-program-export-sheet" aria-hidden="true">
+    <div class="coach-program-export-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="coach-program-export-title">
+      <div class="coach-program-export-head">
+        <div><strong id="coach-program-export-title">輸出課表</strong><span id="coach-program-export-sub">選擇輸出格式</span></div>
+        <button class="icon-btn" data-action="coach-close-program-export" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-program-export-body">
+        <div class="coach-program-export-meta" id="coach-program-export-meta"></div>
+        <div class="coach-program-export-actions">
+          <button class="btn" data-action="coach-copy-program-text">複製純文字</button>
+          <button class="btn" data-action="coach-copy-program-ai-prompt">複製 AI 提示</button>
+          <button class="btn" data-action="coach-export-program-md">下載 Markdown</button>
+          <button class="btn" data-action="coach-export-program-json">下載 JSON</button>
+        </div>
+        <div class="coach-program-export-preview" id="coach-program-export-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coach Session Report Sheet (Client Coaching Module v1 — Step 5B, independent from library-sheet / coach-sheet / coach-picker / coach-workout-picker / coach-program-export-sheet) -->
+  <div class="coach-session-report-sheet" id="coach-session-report-sheet" aria-hidden="true">
+    <div class="coach-session-report-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="coach-session-report-title">
+      <div class="coach-session-report-head">
+        <div><strong id="coach-session-report-title">課程報告</strong><span id="coach-session-report-sub">選擇預覽與輸出</span></div>
+        <button class="icon-btn" data-action="coach-close-session-report" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-session-report-body">
+        <div class="coach-session-report-meta" id="coach-session-report-meta"></div>
+        <div class="coach-session-report-modes">
+          <button class="btn coach-session-report-mode" data-action="coach-report-preview-coach" data-mode="coach">教練</button>
+          <button class="btn coach-session-report-mode" data-action="coach-report-preview-client" data-mode="client">學員</button>
+          <button class="btn coach-session-report-mode" data-action="coach-report-preview-ai" data-mode="ai">AI Prompt</button>
+        </div>
+        <div class="coach-session-report-actions">
+          <button class="btn" data-action="coach-copy-session-coach-text">複製教練文字</button>
+          <button class="btn" data-action="coach-copy-session-client-text">複製學員文字</button>
+          <button class="btn" data-action="coach-copy-session-ai-prompt">複製 AI Prompt</button>
+          <button class="btn" data-action="coach-export-session-md">下載 Markdown</button>
+          <button class="btn" data-action="coach-export-session-json">下載 JSON</button>
+        </div>
+        <div class="coach-session-report-preview" id="coach-session-report-preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coach Finish Sync Sheet (Client Coaching Module v1 — Final Patch, independent from library-sheet / coach-sheet / coach-picker / coach-workout-picker / coach-program-export-sheet / coach-session-report-sheet) -->
+  <div class="coach-finish-sync-sheet" id="coach-finish-sync-sheet" aria-hidden="true">
+    <div class="coach-finish-sync-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="coach-finish-sync-title">
+      <div class="coach-finish-sync-head">
+        <div><strong id="coach-finish-sync-title">完成訓練</strong><span id="coach-finish-sync-sub">偵測到本次課程有動作調整</span></div>
+        <button class="icon-btn" data-action="coach-finish-cancel" aria-label="關閉">×</button>
+      </div>
+      <div class="coach-finish-sync-body">
+        <div class="coach-finish-sync-desc" id="coach-finish-sync-desc">本次訓練的動作、組數或參數與使用中課表不一致。要只儲存本次紀錄，還是同步回原課表？</div>
+        <div class="coach-finish-sync-diff" id="coach-finish-sync-diff"></div>
+        <div class="coach-finish-sync-actions">
+          <button class="btn primary" data-action="coach-finish-save-only">只存本次紀錄</button>
+          <button class="btn" data-action="coach-finish-sync-program">同步到課表</button>
+          <button class="btn ghost" data-action="coach-finish-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
