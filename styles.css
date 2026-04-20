@@ -6523,3 +6523,40 @@ body{
 /* ============================================================
    End Section 60.
    ============================================================ */
+
+/* ============================================================
+   Section 61 — HOME SPACING PRECISION PASS (Phase 7.3)
+   Goal:
+     Previous 4–6px micro-adjustments were too subtle. This pass
+     upgrades the same local hotspots to perceptible rhythm using
+     hero-internal padding-bottom + hero margin-bottom + panel-head
+     padding-bottom + panel↔panel margin-top. Spine gap untouched.
+   Scope guard:
+     · Only #home-view-self / #home-view-coach selectors
+     · No spine-gap changes, no card-height changes
+     · No new elements, no non-home screen changes
+   ============================================================ */
+
+/* --- Self home: precision local spacing --- */
+#screen-home #home-view-self .home-cta{gap:14px}
+#screen-home #home-view-self .home-cta-alt{margin-top:4px}
+#screen-home #home-view-self .home-hero-slim{padding-bottom:24px;margin-bottom:12px}
+#screen-home #home-view-self .home-panel-head{padding-bottom:14px}
+
+/* --- Coach home: precision local spacing --- */
+#screen-home #home-view-coach .home-cta{gap:14px}
+#screen-home #home-view-coach .home-cta-alt{margin-top:4px}
+#screen-home #home-view-coach .home-hero-slim{padding-bottom:24px}
+#screen-home #home-view-coach .home-hero-slim + .home-panel{margin-top:12px}
+#screen-home #home-view-coach .home-panel + .home-panel{margin-top:14px}
+
+@media (max-width:560px){
+  #screen-home #home-view-self .home-hero-slim{padding-bottom:20px;margin-bottom:10px}
+  #screen-home #home-view-self .home-panel-head{padding-bottom:12px}
+  #screen-home #home-view-coach .home-hero-slim{padding-bottom:20px}
+  #screen-home #home-view-coach .home-hero-slim + .home-panel{margin-top:10px}
+  #screen-home #home-view-coach .home-panel + .home-panel{margin-top:12px}
+}
+/* ============================================================
+   End Section 61.
+   ============================================================ */
