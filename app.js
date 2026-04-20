@@ -85,9 +85,11 @@ const App={
   onChange(fn){this._onChange=typeof fn==='function'?fn:null}
 };
 
-// V5 evidence schema descriptor. Phase 1 declares field names only;
-// Phase 7 will populate exercise / program metadata + evidence_refs
-// entries against this schema. Nothing reads from it yet.
+// V5 evidence schema descriptor. Phase 1 declared the field-group names;
+// Phase 8 mounts the seed data below (EVIDENCE_REFS_SEED / EXERCISE_METADATA
+// / PROGRAM_METADATA) and wires all three into the shared Knowledge layer
+// via Knowledge.init(). Existing renders do NOT read from the metadata
+// — absence is always safe. Seed keys strictly conform to these field lists.
 const EVIDENCE_SCHEMA=Object.freeze({
   exercise_meta_fields:Object.freeze([
     'primary_muscle','secondary_muscles','movement_pattern','equipment',
@@ -104,6 +106,311 @@ const EVIDENCE_SCHEMA=Object.freeze({
   evidence_ref_fields:Object.freeze([
     'id','source','authors','year','title','url','summary','tags'
   ])
+});
+
+// ================================================================
+// 2.5 V5 ACSM EVIDENCE LAYER — seed indexes (Phase 8)
+// ----------------------------------------------------------------
+// Three parallel seed indexes fully conforming to EVIDENCE_SCHEMA above.
+// Pure constants — no runtime mutation, no writes to DB / CDB / WK / CWK,
+// no pollution of self or coach business pools. Mounted to the shared
+// knowledge layer via Knowledge.init(). Existing renders do not depend
+// on any metadata fields; Knowledge getters return null for unknown
+// keys so absence is always safe.
+//
+//   EVIDENCE_REFS_SEED — array of evidence refs (8 fields per entry)
+//   EXERCISE_METADATA  — keyed by exercise key (15 fields per entry)
+//   PROGRAM_METADATA   — keyed by built-in program id (9 fields per entry)
+//
+// Cross-links:
+//   EXERCISE_METADATA[key].evidence_ref_ids -> EVIDENCE_REFS_SEED[].id
+//   PROGRAM_METADATA[id].evidence_ref_ids  -> EVIDENCE_REFS_SEED[].id
+//   EXERCISE_METADATA[key].swap_candidates -> EXERCISE_REGISTRY[].key
+//   PROGRAM_METADATA[id] keys              -> PS.bi[].id (built-in)
+// ================================================================
+
+const EVIDENCE_REFS_SEED=Object.freeze([
+  Object.freeze({
+    id:'acsm_gl_2021',
+    source:'ACSM Guidelines (11th ed.)',
+    authors:Object.freeze(['American College of Sports Medicine']),
+    year:2021,
+    title:"ACSM's Guidelines for Exercise Testing and Prescription, 11th edition",
+    url:'https://www.acsm.org/education-resources/books/guidelines-exercise-testing-prescription',
+    summary:'一般健康成人肌力訓練建議：每週每肌群 2–3 次、每動作 2–4 組 × 8–12 次，強度約 60–80% 1RM。',
+    tags:Object.freeze(['acsm','guidelines','general_population','resistance_training'])
+  }),
+  Object.freeze({
+    id:'acsm_ps_progression_2009',
+    source:'Medicine & Science in Sports & Exercise (ACSM Position Stand)',
+    authors:Object.freeze(['American College of Sports Medicine']),
+    year:2009,
+    title:'Progression Models in Resistance Training for Healthy Adults',
+    url:'https://journals.lww.com/acsm-msse/Fulltext/2009/03000/Progression_Models_in_Resistance_Training_for.26.aspx',
+    summary:'按訓練者階段（新手／中階／進階）提供肌力、肌肥大、肌耐力、爆發力的組數／次數／強度／頻率建議。',
+    tags:Object.freeze(['acsm','position_stand','progression','strength','hypertrophy'])
+  }),
+  Object.freeze({
+    id:'schoenfeld_volume_2017',
+    source:'Journal of Sports Sciences',
+    authors:Object.freeze(['Schoenfeld BJ','Ogborn D','Krieger JW']),
+    year:2017,
+    title:'Dose–response relationship between weekly resistance training volume and increases in muscle mass',
+    url:'https://pubmed.ncbi.nlm.nih.gov/27433992/',
+    summary:'系統綜述 + meta 分析：每週每肌群有效組數與肌肥大呈劑量反應關係，10+ 組週量為有效基準。',
+    tags:Object.freeze(['volume','hypertrophy','meta_analysis','weekly_sets'])
+  }),
+  Object.freeze({
+    id:'helms_rir_2016',
+    source:'Strength and Conditioning Journal',
+    authors:Object.freeze(['Helms ER','Cronin J','Storey A','Zourdos MC']),
+    year:2016,
+    title:'Application of the Repetitions in Reserve-Based RPE Scale for Resistance Training',
+    url:'https://pubmed.ncbi.nlm.nih.gov/27540272/',
+    summary:'RIR（保留次數）是個別化調節阻力訓練強度的有效主觀指標，適合 autoregulation 應用。',
+    tags:Object.freeze(['rir','rpe','autoregulation','intensity'])
+  }),
+  Object.freeze({
+    id:'schoenfeld_freq_2019',
+    source:'Sports Medicine',
+    authors:Object.freeze(['Schoenfeld BJ','Grgic J','Krieger J']),
+    year:2019,
+    title:'How many times per week should a muscle be trained to maximize muscle hypertrophy?',
+    url:'https://pubmed.ncbi.nlm.nih.gov/30558493/',
+    summary:'在週訓練量相等時，每週每肌群 ≥2 次在肌肥大上可能略優於 1 次，頻率可拆分週量。',
+    tags:Object.freeze(['frequency','hypertrophy','weekly_sessions','meta_analysis'])
+  })
+]);
+
+const EXERCISE_METADATA=Object.freeze({
+  back_squat:Object.freeze({
+    primary_muscle:'quadriceps',
+    secondary_muscles:Object.freeze(['gluteus_maximus','adductors','erector_spinae','hamstrings']),
+    movement_pattern:'squat',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['strength','hypertrophy','general_health']),
+    skill_level:'intermediate',
+    fatigue_cost:'high',
+    recommended_rep_range:Object.freeze([5,10]),
+    recommended_set_range:Object.freeze([3,5]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'力量 120–180 秒／肌肥大 90–120 秒',
+    swap_candidates:Object.freeze(['front_squat','hack_squat','smith_squat','leg_press','goblet_squat']),
+    contraindication_note:'膝關節或下背急性疼痛期應降負荷或改器械替代。',
+    coaching_cues:Object.freeze(['腳寬略大於肩','核心穩定後下蹲','膝與腳尖同向','大腿至少與地面平行']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','acsm_ps_progression_2009'])
+  }),
+  barbell_bench_press:Object.freeze({
+    primary_muscle:'pectoralis_major',
+    secondary_muscles:Object.freeze(['anterior_deltoid','triceps_brachii']),
+    movement_pattern:'horizontal_push',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['strength','hypertrophy']),
+    skill_level:'intermediate',
+    fatigue_cost:'high',
+    recommended_rep_range:Object.freeze([5,10]),
+    recommended_set_range:Object.freeze([3,5]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'力量 120–180 秒／肌肥大 90–120 秒',
+    swap_candidates:Object.freeze(['flat_dumbbell_press','incline_dumbbell_press','machine_chest_press','smith_bench_press','weighted_dip','push_up']),
+    contraindication_note:'肩關節前側不適應降負荷，改啞鈴或器械以允許自然軌跡。',
+    coaching_cues:Object.freeze(['肩胛後收下壓','下槓至胸下緣','手肘夾角 45–70 度','腳平踩穩定下盤']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  }),
+  conventional_deadlift:Object.freeze({
+    primary_muscle:'erector_spinae',
+    secondary_muscles:Object.freeze(['gluteus_maximus','hamstrings','trapezius','latissimus_dorsi']),
+    movement_pattern:'hinge',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['strength']),
+    skill_level:'advanced',
+    fatigue_cost:'very_high',
+    recommended_rep_range:Object.freeze([3,6]),
+    recommended_set_range:Object.freeze([3,5]),
+    recommended_frequency:'每週 1 次',
+    rest_guidance:'力量 180 秒以上',
+    swap_candidates:Object.freeze(['sumo_deadlift','trap_bar_deadlift','romanian_deadlift']),
+    contraindication_note:'下背急性痛或椎間盤問題應改六角槓或 RDL 降低剪力。',
+    coaching_cues:Object.freeze(['脛骨貼槓','肩胛與核心先鎖定','髖主導啟動','膝與腳尖同向']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','acsm_ps_progression_2009'])
+  }),
+  overhead_press:Object.freeze({
+    primary_muscle:'anterior_deltoid',
+    secondary_muscles:Object.freeze(['triceps_brachii','upper_trapezius','serratus_anterior']),
+    movement_pattern:'vertical_push',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['strength','hypertrophy']),
+    skill_level:'intermediate',
+    fatigue_cost:'moderate',
+    recommended_rep_range:Object.freeze([5,10]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'90–150 秒',
+    swap_candidates:Object.freeze(['machine_shoulder_press','dumbbell_shoulder_press','seated_dumbbell_shoulder_press','arnold_press']),
+    contraindication_note:'肩夾擠綜合症患者避免過頭槓鈴，改中立握啞鈴或器械。',
+    coaching_cues:Object.freeze(['核心夾緊避免腰過伸','槓鈴路徑貼近臉部','頂點肩胛上旋','收臀穩骨盆']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021'])
+  }),
+  barbell_row:Object.freeze({
+    primary_muscle:'latissimus_dorsi',
+    secondary_muscles:Object.freeze(['rhomboids','trapezius','posterior_deltoid','biceps_brachii']),
+    movement_pattern:'horizontal_pull',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['strength','hypertrophy']),
+    skill_level:'intermediate',
+    fatigue_cost:'high',
+    recommended_rep_range:Object.freeze([6,10]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'90–120 秒',
+    swap_candidates:Object.freeze(['t_bar_row','pendlay_row','single_arm_dumbbell_row','chest_supported_row','cable_row']),
+    contraindication_note:'下背痛期改用胸托划船或坐姿划船降低脊柱負擔。',
+    coaching_cues:Object.freeze(['髖鉸鏈到位','背部中立','肘往後夾拉向肚臍','避免下背過度代償']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  }),
+  pull_up:Object.freeze({
+    primary_muscle:'latissimus_dorsi',
+    secondary_muscles:Object.freeze(['biceps_brachii','rhomboids','trapezius','teres_major']),
+    movement_pattern:'vertical_pull',
+    equipment:'Bodyweight',
+    goal_tags:Object.freeze(['strength','hypertrophy']),
+    skill_level:'intermediate',
+    fatigue_cost:'high',
+    recommended_rep_range:Object.freeze([5,10]),
+    recommended_set_range:Object.freeze([3,5]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'90–120 秒',
+    swap_candidates:Object.freeze(['assisted_pull_up','lat_pulldown','wide_grip_lat_pulldown','close_grip_lat_pulldown']),
+    contraindication_note:'肩關節彈響或疼痛者改用中立握距或器械下拉。',
+    coaching_cues:Object.freeze(['肩胛先下沉','手肘往下後拉','避免盪動','下巴過槓頂點']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021'])
+  }),
+  leg_press:Object.freeze({
+    primary_muscle:'quadriceps',
+    secondary_muscles:Object.freeze(['gluteus_maximus','hamstrings','adductors']),
+    movement_pattern:'squat',
+    equipment:'Machine',
+    goal_tags:Object.freeze(['hypertrophy','general_health','fat_loss']),
+    skill_level:'beginner',
+    fatigue_cost:'moderate',
+    recommended_rep_range:Object.freeze([8,15]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'75–120 秒',
+    swap_candidates:Object.freeze(['back_squat','hack_squat','smith_squat','goblet_squat','single_leg_press']),
+    contraindication_note:'膝疼痛者降幅度避免膝超過腳尖太多；椎間盤問題避免骨盆後傾。',
+    coaching_cues:Object.freeze(['腳板平放','膝對準腳尖','下到大腿與踏板夾角 ≈90 度','避免鎖死膝關節']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  }),
+  romanian_deadlift:Object.freeze({
+    primary_muscle:'hamstrings',
+    secondary_muscles:Object.freeze(['gluteus_maximus','erector_spinae']),
+    movement_pattern:'hinge',
+    equipment:'Barbell',
+    goal_tags:Object.freeze(['hypertrophy','strength']),
+    skill_level:'intermediate',
+    fatigue_cost:'moderate',
+    recommended_rep_range:Object.freeze([6,12]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'90–120 秒',
+    swap_candidates:Object.freeze(['conventional_deadlift','sumo_deadlift','back_extension','hip_thrust']),
+    contraindication_note:'下背壓力敏感者壓低重量，優先維持背部中立。',
+    coaching_cues:Object.freeze(['微屈膝不再加深','髖往後推','槓鈴沿大腿下滑','感受腿後側拉伸']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  }),
+  lat_pulldown:Object.freeze({
+    primary_muscle:'latissimus_dorsi',
+    secondary_muscles:Object.freeze(['biceps_brachii','rhomboids','teres_major']),
+    movement_pattern:'vertical_pull',
+    equipment:'Cable',
+    goal_tags:Object.freeze(['hypertrophy','general_health']),
+    skill_level:'beginner',
+    fatigue_cost:'low',
+    recommended_rep_range:Object.freeze([8,15]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'60–90 秒',
+    swap_candidates:Object.freeze(['pull_up','assisted_pull_up','wide_grip_lat_pulldown','close_grip_lat_pulldown','reverse_grip_lat_pulldown']),
+    contraindication_note:'肩前突或盂肱不穩定者避免拉到頸後，改拉至鎖骨。',
+    coaching_cues:Object.freeze(['坐穩後膝下方墊靠','肩胛先下沉','拉桿至鎖骨上緣','離心緩慢回原位']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  }),
+  weighted_dip:Object.freeze({
+    primary_muscle:'pectoralis_major',
+    secondary_muscles:Object.freeze(['triceps_brachii','anterior_deltoid']),
+    movement_pattern:'horizontal_push',
+    equipment:'Bodyweight',
+    goal_tags:Object.freeze(['strength','hypertrophy']),
+    skill_level:'advanced',
+    fatigue_cost:'high',
+    recommended_rep_range:Object.freeze([5,10]),
+    recommended_set_range:Object.freeze([3,4]),
+    recommended_frequency:'每週 1–2 次',
+    rest_guidance:'90–120 秒',
+    swap_candidates:Object.freeze(['assisted_dip','chest_dip','push_up','decline_push_up']),
+    contraindication_note:'肩前側痛或鎖骨遠端不適者不建議，改用器械胸推。',
+    coaching_cues:Object.freeze(['前傾軀幹針對胸','垂直下降','下到肩略低於肘','避免鎖死頂點']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','schoenfeld_volume_2017'])
+  })
+});
+
+const PROGRAM_METADATA=Object.freeze({
+  builtin_acsm_general_strength:Object.freeze({
+    split_type:'full_body',
+    primary_goal:'general_health',
+    frequency_recommendation:'每週 2–3 天',
+    duration_range:Object.freeze([40,50]),
+    volume_profile:'low_to_moderate',
+    fatigue_profile:'low',
+    target_population:Object.freeze(['beginner','general_adult']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','acsm_ps_progression_2009']),
+    rationale_summary:'ACSM 對健康成人每週 2–3 次、涵蓋主要肌群、8–12 次 × 2–4 組的基礎建議。'
+  }),
+  builtin_acsm_strength_base:Object.freeze({
+    split_type:'full_body',
+    primary_goal:'strength',
+    frequency_recommendation:'每週 3 天',
+    duration_range:Object.freeze([50,70]),
+    volume_profile:'moderate',
+    fatigue_profile:'high',
+    target_population:Object.freeze(['intermediate']),
+    evidence_ref_ids:Object.freeze(['acsm_ps_progression_2009','acsm_gl_2021']),
+    rationale_summary:'ACSM progression model：力量取向以 ≥60% 1RM、低次數、長休息與大肌群複合動作為核心。'
+  }),
+  builtin_acsm_hypertrophy_fb:Object.freeze({
+    split_type:'full_body',
+    primary_goal:'hypertrophy',
+    frequency_recommendation:'每週 3 天',
+    duration_range:Object.freeze([50,70]),
+    volume_profile:'moderate_to_high',
+    fatigue_profile:'moderate',
+    target_population:Object.freeze(['intermediate']),
+    evidence_ref_ids:Object.freeze(['schoenfeld_volume_2017','schoenfeld_freq_2019','acsm_ps_progression_2009']),
+    rationale_summary:'全身頻率 2–3 次／週，每肌群累積每週 10+ 組有效組數驅動肌肥大。'
+  }),
+  builtin_acsm_fat_loss_fb:Object.freeze({
+    split_type:'full_body',
+    primary_goal:'fat_loss',
+    frequency_recommendation:'每週 3–4 天',
+    duration_range:Object.freeze([45,55]),
+    volume_profile:'moderate',
+    fatigue_profile:'moderate',
+    target_population:Object.freeze(['intermediate','general_adult']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021','acsm_ps_progression_2009']),
+    rationale_summary:'以阻力訓練保留肌肉量，搭配 ACSM 建議每週 150–300 分鐘中等有氧達成能量赤字。'
+  }),
+  builtin_acsm_cardio_support:Object.freeze({
+    split_type:'cardio_support',
+    primary_goal:'cardio_endurance',
+    frequency_recommendation:'每週 2–3 天',
+    duration_range:Object.freeze([40,50]),
+    volume_profile:'low',
+    fatigue_profile:'low',
+    target_population:Object.freeze(['beginner','general_adult']),
+    evidence_ref_ids:Object.freeze(['acsm_gl_2021']),
+    rationale_summary:'有氧為主、輔以簡單核心；對應 ACSM 每週 150–300 分鐘中等有氧建議。'
+  })
 });
 
 // ================================================================
@@ -4125,21 +4432,61 @@ function initCoachingDomain(){
 // ================================================================
 
 const Knowledge={
+  // --- Core shared indexes ---
   exercise_master:EXERCISE_REGISTRY,
   exercise_variants:[],
+  exercise_metadata:null,            // late-bound to EXERCISE_METADATA in init()
   program_templates:null,            // late-bound to PS.bi in init()
+  program_metadata:null,             // late-bound to PROGRAM_METADATA in init()
   muscle_groups:[],
   equipment_tags:[],
   movement_patterns:null,            // late-bound to MOVEMENT_PATTERN_MAP in init()
   goal_tags:[],
+  // --- ACSM evidence layer (Phase 8) ---
+  evidence_schema:(typeof EVIDENCE_SCHEMA!=='undefined')?EVIDENCE_SCHEMA:null,
   evidence_refs:[],
+  // --- Reserved ---
   swap_maps:{},
   template_blocks:[],
   init(){
     this.program_templates=(typeof PS!=='undefined'&&Array.isArray(PS.bi))?PS.bi:[];
     this.movement_patterns=(typeof MOVEMENT_PATTERN_MAP!=='undefined')?MOVEMENT_PATTERN_MAP:{};
+    // Phase 8: wire ACSM evidence layer. Each binding is defensive —
+    // if the seed constant is missing the field falls back to an empty
+    // container so Knowledge getters never throw.
+    this.exercise_metadata=(typeof EXERCISE_METADATA!=='undefined'&&EXERCISE_METADATA)?EXERCISE_METADATA:{};
+    this.program_metadata=(typeof PROGRAM_METADATA!=='undefined'&&PROGRAM_METADATA)?PROGRAM_METADATA:{};
+    this.evidence_refs=(typeof EVIDENCE_REFS_SEED!=='undefined'&&Array.isArray(EVIDENCE_REFS_SEED))?EVIDENCE_REFS_SEED:[];
     return this;
-  }
+  },
+  // --- Phase 8: ACSM evidence layer safe getters ---
+  // All getters return null / [] for unknown keys and never throw.
+  // Existing renders do not depend on these; absence is always safe.
+  getExerciseMetadata(key){
+    if(!key||typeof key!=='string')return null;
+    const m=this.exercise_metadata;
+    return(m&&Object.prototype.hasOwnProperty.call(m,key))?m[key]:null;
+  },
+  getProgramMetadata(id){
+    if(!id||typeof id!=='string')return null;
+    const m=this.program_metadata;
+    return(m&&Object.prototype.hasOwnProperty.call(m,id))?m[id]:null;
+  },
+  getEvidenceRef(id){
+    if(!id||typeof id!=='string')return null;
+    const list=this.evidence_refs;
+    if(!Array.isArray(list))return null;
+    return list.find(r=>r&&r.id===id)||null;
+  },
+  getEvidenceRefsFor(kind,keyOrId){
+    // Resolve an entry's evidence_ref_ids and return hydrated ref objects.
+    let ids=null;
+    if(kind==='exercise'){const m=this.getExerciseMetadata(keyOrId);ids=m&&m.evidence_ref_ids;}
+    else if(kind==='program'){const m=this.getProgramMetadata(keyOrId);ids=m&&m.evidence_ref_ids;}
+    if(!Array.isArray(ids))return[];
+    return ids.map(id=>this.getEvidenceRef(id)).filter(Boolean);
+  },
+  listEvidenceRefs(){return Array.isArray(this.evidence_refs)?this.evidence_refs.slice():[]}
 };
 
 const Workspace={
