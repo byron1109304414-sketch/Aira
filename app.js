@@ -1290,7 +1290,7 @@ const Toast={t:null,show(m){const e=$('#toast');e.textContent=m;e.classList.add(
 const Nav={
   cur:'screen-home',
   go(id){$$('.screen').forEach(e=>e.classList.toggle('active',e.id===id));this.cur=id;window.scrollTo({top:0,behavior:'instant' in window?'instant':'auto'});
-  if(id==='screen-home')SC.renderHome();if(id==='screen-programs')SC.renderPrograms();if(id==='screen-history')SC.renderHistory();if(id==='screen-strength')SC.renderStrength();if(id==='screen-weight')SC.renderWeight();if(id==='screen-cardio')SC.renderCardio();if(id==='screen-science')SC.renderScience();if(id==='screen-settings')SC.renderSettings();if(id==='screen-reports')SC.renderReports();if(id==='screen-coach-clients')SC.renderCoachClients();if(id==='screen-coach-client-detail')SC.renderCoachClientDetail();if(id==='screen-coach-programs')SC.renderCoachPrograms();if(id==='screen-coach-program-editor')SC.renderCoachProgramEditor();if(id==='screen-coach-workout')SC.renderCoachWorkout();if(id==='screen-coach-reports')SC.renderCoachReports()}
+  if(id==='screen-home')SC.renderHome();if(id==='screen-programs')SC.renderPrograms();if(id==='screen-history')SC.renderHistory();if(id==='screen-strength')SC.renderStrength();if(id==='screen-weight')SC.renderWeight();if(id==='screen-cardio')SC.renderCardio();if(id==='screen-science')SC.renderScience();if(id==='screen-settings')SC.renderSettings();if(id==='screen-reports')SC.renderReports();if(id==='screen-coach-clients')SC.renderCoachClients();if(id==='screen-coach-client-detail')SC.renderCoachClientDetail();if(id==='screen-coach-programs')SC.renderCoachPrograms();if(id==='screen-coach-program-editor')SC.renderCoachProgramEditor();if(id==='screen-coach-workout')SC.renderCoachWorkout();if(id==='screen-coach-reports')SC.renderCoachReports();if(id==='screen-coach-feedback')SC.renderCoachFeedback()}
 };
 
 // ================================================================
@@ -1344,6 +1344,12 @@ const SC={
           return `<div class="item"><h3>${Utils.escape(name)}</h3><div class="meta"><span>${Utils.escape(prog)}</span><span>${Utils.escape(dateText)}</span><span>${Utils.escape(statusTxt)}</span></div></div>`;
         }).join('');
       }
+    }
+    const fbSub=$('#coach-home-feedback-sub');
+    if(fbSub){
+      const unread=Workspace.coachFeedbackUnread?Workspace.coachFeedbackUnread():[];
+      const pending=Workspace.coachFeedbackPending?Workspace.coachFeedbackPending():[];
+      fbSub.textContent=(unread.length||pending.length)?`未讀 ${unread.length} · 待追蹤 ${pending.length}`:'尚無回報';
     }
   },
   programSearchQ:'',
@@ -1549,8 +1555,28 @@ function handleAction(action,el){
     case 'back-coach-client-detail':Nav.go('screen-coach-clients');break;
     case 'coach-client-detail-edit':if(SC.coachCurrentClientId)SC.openCoachClientSheet(SC.coachCurrentClientId);break;
     case 'coach-client-detail-start':SC.startCoachSessionForClient(el.dataset.id||SC.coachCurrentClientId);break;
+    case 'coach-client-detail-open-program':{
+      const cid=el.dataset.id||SC.coachCurrentClientId||'';
+      if(!cid){Toast.show('請先選擇學員');break}
+      SC.coachCurrentClientId=cid;
+      const active=(typeof SC.getCoachActiveProgram==='function')?SC.getCoachActiveProgram(cid):null;
+      if(active){SC.openCoachProgramEditor(active.id)}
+      else{Nav.go('screen-coach-programs');Toast.show('此學員尚未設定使用中課表')}
+      break;
+    }
     case 'coach-client-note-save':SC.saveCoachClientNoteFromInput();break;
     case 'coach-client-note-delete':SC.deleteCoachClientNote(el.dataset.id);break;
+    case 'open-coach-feedback':if(!App.isCoach())App.set(WORKSPACE_COACH);Nav.go('screen-coach-feedback');break;
+    case 'back-coach-feedback':Nav.go('screen-home');break;
+    case 'coach-feedback-filter':SC.setCoachFeedbackFilter(el.dataset.filter||'all');break;
+    case 'coach-new-feedback':SC.openCoachFeedbackSheet('',el.dataset.clientId||SC.coachCurrentClientId||'');break;
+    case 'coach-edit-feedback':SC.openCoachFeedbackSheet(el.dataset.id);break;
+    case 'coach-feedback-save':SC.saveCoachFeedbackFromSheet();break;
+    case 'coach-feedback-close':SC.closeCoachFeedbackSheet();break;
+    case 'coach-feedback-delete':SC.deleteCoachFeedbackFromSheet(el.dataset.id);break;
+    case 'coach-feedback-mark-viewed':SC.markCoachFeedbackViewed(el.dataset.id,el.dataset.viewed);break;
+    case 'coach-feedback-toggle-followup':SC.toggleCoachFeedbackFollowUp(el.dataset.id);break;
+    case 'coach-feedback-jump-client':SC.jumpCoachFeedbackClient(el.dataset.id);break;
     case 'open-coach-programs':SC.coachCurrentClientId=el.dataset.id||SC.coachCurrentClientId||'';Nav.go('screen-coach-programs');break;
     case 'back-coach-programs':Nav.go('screen-coach-clients');break;
     case 'coach-new-program':SC.openCoachProgramEditor(null);break;
@@ -1567,6 +1593,9 @@ function handleAction(action,el){
     case 'coach-open-program-picker':SC.openCoachProgramPicker();break;
     case 'coach-close-program-picker':SC.closeCoachProgramPicker();break;
     case 'coach-picker-add-exercise':SC.pickerAddExercise(el.dataset.exerciseKey);break;
+    case 'coach-editor-swap-exercise':SC.openCoachProgramPicker('swap',el.dataset.id);break;
+    case 'coach-editor-insert-backup':SC.openCoachProgramPicker('backup',el.dataset.id);break;
+    case 'coach-editor-toggle-backup':SC.toggleCoachProgramBackup(el.dataset.id);break;
     case 'start-coach-workout':{
       const clientId=el.dataset.clientId||SC.coachCurrentClientId;
       if(!clientId){Toast.show('請先選擇學員');break}
@@ -1767,6 +1796,7 @@ const CPS={
     const src=(program&&typeof program==='object')?program:{};
     const now=this._now();
     const exSrc=Array.isArray(src.exercises)?src.exercises:[];
+    const numOrBlank=v=>{if(v===''||v===null||v===undefined)return'';const n=Number(v);return Number.isFinite(n)?n:''};
     const exercises=exSrc.map(ex=>{
       const key=(ex&&(ex.exerciseKey||resolveKey(ex.name||'')))||'';
       const rirRaw=(ex&&ex.rir!=null)?ex.rir:2;
@@ -1778,6 +1808,8 @@ const CPS={
         repMax:Utils.clamp(parseInt((ex&&(ex.repMax||ex.repMin))||12,10)||12,1,60),
         rir:Utils.clamp(Number.isFinite(rirNum)?rirNum:2,0,5),
         restSec:Utils.clamp(parseInt((ex&&ex.restSec)||60,10)||60,0,600),
+        targetWeightKg:numOrBlank(ex&&ex.targetWeightKg),
+        isBackup:!!(ex&&ex.isBackup),
         notes:Utils.text(ex&&ex.notes)
       };
     }).filter(ex=>!!ex.exerciseKey);
@@ -1847,6 +1879,7 @@ const CWK={
     const client=Clients.byId(clientId)||null;
     const program=opts.programId?CPS.byId(opts.programId):null;
     const now=this._now();
+    const toNumOrBlank=v=>{if(v===''||v===null||v===undefined)return'';const n=Number(v);return Number.isFinite(n)?n:''};
     const exercises=(program&&Array.isArray(program.exercises)?program.exercises:[]).map(ex=>({
       id:Utils.uid('cex'),
       exerciseKey:ex.exerciseKey,
@@ -1856,6 +1889,8 @@ const CWK={
       repMax:Utils.clamp(parseInt(ex.repMax,10)||12,1,60),
       rir:Utils.clamp(Number.isFinite(parseInt(ex.rir,10))?parseInt(ex.rir,10):2,0,5),
       restSec:Utils.clamp(parseInt(ex.restSec,10)||60,0,600),
+      targetWeightKg:toNumOrBlank(ex.targetWeightKg),
+      isBackup:!!ex.isBackup,
       notes:Utils.text(ex.notes),
       note:Utils.text(ex.notes)
     }));
@@ -2086,7 +2121,72 @@ const ClientProgress={
 const ClientFeedback={
   _now(){return Date.now()},
   getAll(){return((CDB.data&&CDB.data.clientFeedback)||[]).slice()},
-  byClient(clientId){return this.getAll().filter(f=>f.clientId===clientId).sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))}
+  byClient(clientId){return this.getAll().filter(f=>f.clientId===clientId).sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))},
+  byId(id){return this.getAll().find(f=>f.id===id)||null},
+  unread(){return this.getAll().filter(f=>!f.viewed).sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))},
+  pending(){return this.getAll().filter(f=>f.followUp&&!f.resolved).sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))},
+  latestByClient(clientId){return this.byClient(clientId)[0]||null},
+  sanitize(fb){
+    const src=(fb&&typeof fb==='object')?fb:{};
+    const now=this._now();
+    const numOrBlank=v=>{if(v===''||v===null||v===undefined)return'';const n=Number(v);return Number.isFinite(n)?n:''};
+    const clampInt=(v,lo,hi)=>{if(v===''||v===null||v===undefined)return'';const n=Math.round(Number(v));if(!Number.isFinite(n))return'';return Math.min(hi,Math.max(lo,n))};
+    return{
+      id:Utils.text(src.id)||Utils.uid('cfb'),
+      clientId:Utils.text(src.clientId),
+      sessionId:Utils.text(src.sessionId),
+      date:Utils.text(src.date)||new Date(now).toISOString().slice(0,10),
+      fatigue:clampInt(src.fatigue,1,10),
+      sleep:numOrBlank(src.sleep),
+      nutrition:clampInt(src.nutrition,1,5),
+      pain:Utils.text(src.pain),
+      bodyWeight:numOrBlank(src.bodyWeight),
+      note:Utils.text(src.note),
+      viewed:!!src.viewed,
+      followUp:!!src.followUp,
+      resolved:!!src.resolved,
+      createdAt:Number.isFinite(src.createdAt)?src.createdAt:now,
+      updatedAt:now
+    };
+  },
+  save(fb){
+    if(!CDB.data)CDB.load();
+    const clean=this.sanitize(fb);
+    if(!clean.clientId)return null;
+    const list=CDB.data.clientFeedback||(CDB.data.clientFeedback=[]);
+    const idx=list.findIndex(f=>f.id===clean.id);
+    if(idx>=0)list[idx]=clean;else list.unshift(clean);
+    CDB.save();
+    return clean;
+  },
+  delete(id){
+    if(!CDB.data)return false;
+    const before=(CDB.data.clientFeedback||[]).length;
+    CDB.data.clientFeedback=(CDB.data.clientFeedback||[]).filter(f=>f.id!==id);
+    CDB.save();
+    return CDB.data.clientFeedback.length<before;
+  },
+  markViewed(id,viewed){
+    if(!CDB.data)CDB.load();
+    const list=CDB.data.clientFeedback||[];
+    const fb=list.find(f=>f.id===id);
+    if(!fb)return false;
+    fb.viewed=(viewed===undefined)?true:!!viewed;
+    fb.updatedAt=this._now();
+    CDB.save();
+    return true;
+  },
+  toggleFollowUp(id){
+    if(!CDB.data)CDB.load();
+    const list=CDB.data.clientFeedback||[];
+    const fb=list.find(f=>f.id===id);
+    if(!fb)return false;
+    fb.followUp=!fb.followUp;
+    if(!fb.followUp)fb.resolved=false;
+    fb.updatedAt=this._now();
+    CDB.save();
+    return true;
+  }
 };
 
 // ---- Client Coaching Module v1 · Step 2: Client Management UI ----
@@ -2348,7 +2448,7 @@ SC.renderCoachClientDetail=function(){
     const activeName=active?(active.name||'Untitled Client Program'):'未設定';
     const startLabel=active?'開始訓練':'先設定課表';
     entriesEl.innerHTML=
-      `<button class="coach-entry-tile" data-action="open-coach-programs" data-id="${client.id}"><span class="k">現行課表</span><span class="v">${Utils.escape(activeName)}</span></button>`+
+      `<button class="coach-entry-tile" data-action="coach-client-detail-open-program" data-id="${client.id}"><span class="k">現行課表</span><span class="v">${Utils.escape(activeName)}</span></button>`+
       `<button class="coach-entry-tile" data-action="open-coach-reports" data-id="${client.id}"><span class="k">課程紀錄</span><span class="v num">${stats.sessionCount}</span></button>`+
       `<button class="coach-entry-tile" data-action="coach-client-detail-start" data-id="${client.id}"><span class="k">${Utils.escape(startLabel)}</span><span class="v">${active?'進入訓練':'前往課表'}</span></button>`;
   }
@@ -2382,6 +2482,166 @@ SC.renderCoachClientDetail=function(){
       }).join('');
     }
   }
+
+  const fbBtn=$('#coach-client-detail-new-feedback');
+  if(fbBtn)fbBtn.dataset.clientId=client.id;
+  const fbEl=$('#coach-client-detail-feedback');
+  if(fbEl){
+    const list=(Workspace.coachFeedbackByClient?Workspace.coachFeedbackByClient(client.id):[]).slice(0,5);
+    if(!list.length){fbEl.innerHTML='<div class="empty">尚未收到學員回報。點「新增回報」記錄一則主觀疲勞、睡眠或不適。</div>'}
+    else{fbEl.innerHTML=list.map(f=>SC.renderCoachFeedbackItem(f)).join('')}
+  }
+};
+
+SC.renderCoachFeedbackItem=function(f){
+  if(!f)return'';
+  const d=f.date||(f.createdAt?new Date(f.createdAt).toISOString().slice(0,10):'');
+  const parts=[];
+  if(f.fatigue!==''&&f.fatigue!=null)parts.push(`疲勞 ${f.fatigue}/10`);
+  if(f.sleep!==''&&f.sleep!=null)parts.push(`睡眠 ${f.sleep}h`);
+  if(f.nutrition!==''&&f.nutrition!=null)parts.push(`飲食 ${f.nutrition}/5`);
+  if(f.bodyWeight!==''&&f.bodyWeight!=null)parts.push(`${f.bodyWeight} kg`);
+  if(f.pain)parts.push(`痛：${f.pain}`);
+  const meta=parts.map(t=>`<span>${Utils.escape(t)}</span>`).join('');
+  const pills=[];
+  if(!f.viewed)pills.push('<span class="client-pill warn">未讀</span>');
+  if(f.followUp)pills.push('<span class="client-pill follow">追蹤</span>');
+  const pillsHtml=pills.length?`<div class="coach-fb-pills">${pills.join('')}</div>`:'';
+  const noteHtml=f.note?`<div class="coach-fb-note">${Utils.escape(f.note)}</div>`:'';
+  return `<div class="coach-fb-item" data-id="${Utils.escape(f.id)}"><div class="coach-fb-head"><div class="coach-fb-title"><strong>${Utils.escape(d)}</strong>${pillsHtml}</div><button class="btn btn-sub" data-action="coach-edit-feedback" data-id="${Utils.escape(f.id)}">編輯</button></div><div class="meta">${meta}</div>${noteHtml}<div class="coach-fb-foot">${f.viewed?'<button class="btn btn-sub" data-action="coach-feedback-mark-viewed" data-id="'+Utils.escape(f.id)+'" data-viewed="0">標記未讀</button>':'<button class="btn btn-sub" data-action="coach-feedback-mark-viewed" data-id="'+Utils.escape(f.id)+'" data-viewed="1">標記已讀</button>'}<button class="btn btn-sub" data-action="coach-feedback-toggle-followup" data-id="${Utils.escape(f.id)}">${f.followUp?'取消追蹤':'加入追蹤'}</button><button class="btn btn-sub" data-action="coach-feedback-jump-client" data-id="${Utils.escape(f.clientId||'')}">前往學員</button></div></div>`;
+};
+
+SC.coachFeedbackFilter='all';
+SC.coachFeedbackEditingId='';
+
+SC.renderCoachFeedback=function(){
+  if(!CDB.data)CDB.load();
+  const sumEl=$('#coach-feedback-summary');
+  const listEl=$('#coach-feedback-list');
+  const all=(Workspace.coachFeedbackEntries?Workspace.coachFeedbackEntries():[]).slice().sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)));
+  const unread=all.filter(f=>!f.viewed);
+  const pending=all.filter(f=>f.followUp&&!f.resolved);
+  if(sumEl){
+    sumEl.innerHTML=`<div class="coach-fb-summary-grid"><div class="kv"><div class="k">總筆數</div><div class="v num">${all.length}</div></div><div class="kv"><div class="k">未讀</div><div class="v num">${unread.length}</div></div><div class="kv"><div class="k">需追蹤</div><div class="v num">${pending.length}</div></div></div>`;
+  }
+  const filters=$('#coach-feedback-filters');
+  if(filters){const btns=filters.querySelectorAll('[data-action="coach-feedback-filter"]');btns.forEach(b=>b.classList.toggle('is-on',b.dataset.filter===this.coachFeedbackFilter))}
+  let data=all;
+  if(this.coachFeedbackFilter==='unread')data=unread;
+  else if(this.coachFeedbackFilter==='pending')data=pending;
+  if(listEl){
+    if(!data.length){listEl.innerHTML='<div class="empty">目前沒有符合條件的回報。</div>'}
+    else{
+      listEl.innerHTML=data.map(f=>{
+        const c=Clients.byId(f.clientId);
+        const name=c?c.name||'Unnamed Client':'—';
+        const header=`<div class="coach-fb-client"><strong>${Utils.escape(name)}</strong></div>`;
+        return header+SC.renderCoachFeedbackItem(f);
+      }).join('');
+    }
+  }
+};
+
+SC.setCoachFeedbackFilter=function(filter){
+  this.coachFeedbackFilter=filter||'all';
+  this.renderCoachFeedback();
+};
+
+SC.openCoachFeedbackSheet=function(feedbackId,presetClientId){
+  if(!CDB.data)CDB.load();
+  const sheet=$('#coach-feedback-sheet');if(!sheet)return;
+  const clients=Workspace.coachClients?Workspace.coachClients():[];
+  const sel=$('#coach-feedback-client');
+  if(sel){
+    sel.innerHTML='<option value="">請選擇學員</option>'+clients.map(c=>`<option value="${Utils.escape(c.id)}">${Utils.escape(c.name||'Unnamed Client')}</option>`).join('');
+  }
+  const f=feedbackId?ClientFeedback.byId(feedbackId):null;
+  this.coachFeedbackEditingId=f?f.id:'';
+  const title=$('#coach-feedback-sheet-title');
+  if(title)title.textContent=f?'編輯學員回報':'新增學員回報';
+  const delBtn=$('#coach-feedback-delete-btn');
+  if(delBtn){if(f){delBtn.hidden=false;delBtn.dataset.id=f.id}else{delBtn.hidden=true;delBtn.dataset.id=''}}
+  const today=new Date().toISOString().slice(0,10);
+  $('#coach-feedback-client').value=(f&&f.clientId)||presetClientId||this.coachCurrentClientId||'';
+  $('#coach-feedback-date').value=(f&&f.date)||today;
+  $('#coach-feedback-fatigue').value=(f&&f.fatigue!==''&&f.fatigue!=null)?f.fatigue:'';
+  $('#coach-feedback-sleep').value=(f&&f.sleep!==''&&f.sleep!=null)?f.sleep:'';
+  $('#coach-feedback-nutrition').value=(f&&f.nutrition!==''&&f.nutrition!=null)?f.nutrition:'';
+  $('#coach-feedback-pain').value=(f&&f.pain)||'';
+  $('#coach-feedback-bodyweight').value=(f&&f.bodyWeight!==''&&f.bodyWeight!=null)?f.bodyWeight:'';
+  $('#coach-feedback-note').value=(f&&f.note)||'';
+  $('#coach-feedback-viewed').checked=!!(f&&f.viewed);
+  $('#coach-feedback-followup').checked=!!(f&&f.followUp);
+  sheet.classList.add('open');sheet.setAttribute('aria-hidden','false');
+};
+
+SC.closeCoachFeedbackSheet=function(){
+  const sheet=$('#coach-feedback-sheet');if(!sheet)return;
+  sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true');
+  this.coachFeedbackEditingId='';
+};
+
+SC.saveCoachFeedbackFromSheet=function(){
+  const clientId=($('#coach-feedback-client').value||'').trim();
+  if(!clientId){Toast.show('請先選擇學員');return}
+  const payload={
+    id:this.coachFeedbackEditingId||'',
+    clientId,
+    date:$('#coach-feedback-date').value||'',
+    fatigue:$('#coach-feedback-fatigue').value,
+    sleep:$('#coach-feedback-sleep').value,
+    nutrition:$('#coach-feedback-nutrition').value,
+    pain:$('#coach-feedback-pain').value,
+    bodyWeight:$('#coach-feedback-bodyweight').value,
+    note:$('#coach-feedback-note').value,
+    viewed:$('#coach-feedback-viewed').checked,
+    followUp:$('#coach-feedback-followup').checked
+  };
+  const saved=ClientFeedback.save(payload);
+  if(!saved){Toast.show('儲存失敗');return}
+  this.closeCoachFeedbackSheet();
+  if(Nav.cur==='screen-coach-feedback')this.renderCoachFeedback();
+  if(Nav.cur==='screen-coach-client-detail')this.renderCoachClientDetail();
+  if(Nav.cur==='screen-home')this.renderHome();
+  Toast.show('已儲存回報');
+};
+
+SC.deleteCoachFeedbackFromSheet=function(id){
+  const fid=id||this.coachFeedbackEditingId||'';
+  if(!fid)return;
+  if(!confirm('刪除此則學員回報？'))return;
+  if(ClientFeedback.delete(fid)){
+    this.closeCoachFeedbackSheet();
+    if(Nav.cur==='screen-coach-feedback')this.renderCoachFeedback();
+    if(Nav.cur==='screen-coach-client-detail')this.renderCoachClientDetail();
+    if(Nav.cur==='screen-home')this.renderHome();
+    Toast.show('已刪除回報');
+  }
+};
+
+SC.markCoachFeedbackViewed=function(id,viewed){
+  if(!id)return;
+  const v=(viewed===undefined||viewed===null||viewed==='')?true:(String(viewed)==='1'||viewed===true);
+  if(ClientFeedback.markViewed(id,v)){
+    if(Nav.cur==='screen-coach-feedback')this.renderCoachFeedback();
+    if(Nav.cur==='screen-coach-client-detail')this.renderCoachClientDetail();
+    if(Nav.cur==='screen-home')this.renderHome();
+  }
+};
+
+SC.toggleCoachFeedbackFollowUp=function(id){
+  if(!id)return;
+  if(ClientFeedback.toggleFollowUp(id)){
+    if(Nav.cur==='screen-coach-feedback')this.renderCoachFeedback();
+    if(Nav.cur==='screen-coach-client-detail')this.renderCoachClientDetail();
+    if(Nav.cur==='screen-home')this.renderHome();
+  }
+};
+
+SC.jumpCoachFeedbackClient=function(clientId){
+  if(!clientId){Toast.show('此回報沒有綁定學員');return}
+  this.coachCurrentClientId=clientId;
+  Nav.go('screen-coach-client-detail');
 };
 
 SC.saveCoachClientNoteFromInput=function(){
@@ -2436,6 +2696,8 @@ SC.coachEditingProgramId='';
 SC.coachEditingProgram=null;
 SC.coachProgramPickerOpen=false;
 SC.coachProgramPickerSearch='';
+SC.coachProgramPickerMode='';
+SC.coachProgramPickerTargetId='';
 
 SC.getCoachClientOrThrow=function(clientId){
   if(!CDB.data)CDB.load();
@@ -2469,7 +2731,9 @@ SC.createBlankCoachExercise=function(exerciseKey){
     repMax:12,
     rir:2,
     restSec:60,
-    notes:''
+    notes:'',
+    targetWeightKg:'',
+    isBackup:false
   };
 };
 
@@ -2590,7 +2854,10 @@ SC.renderCoachProgramExerciseRows=function(){
   if(!rows.length){list.innerHTML='<div class="coach-program-editor-empty">尚未加入任何動作，點「新增動作」開始。</div>';return}
   list.innerHTML=rows.map((ex,i)=>{
     const label=this.getCoachProgramExerciseLabel(ex);
-    return`<div class="coach-program-editor-card" data-coach-ex="${ex._id}"><div class="coach-program-editor-top"><div class="coach-program-editor-name">${Utils.escape(label)}</div><div class="coach-program-editor-actions"><button class="order-btn" data-action="coach-editor-move-exercise-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="coach-editor-move-exercise-down" data-id="${ex._id}" ${i===rows.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="coach-editor-remove-exercise" data-id="${ex._id}">×</button></div></div><div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="20" value="${ex.sets}" data-action="coach-editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMin}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMax"></div></div><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="coach-editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="0" max="600" value="${ex.restSec}" data-action="coach-editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="coach-editor-field" data-id="${ex._id}" data-field="notes">${Utils.escape(ex.notes||'')}</textarea></div></div>`;
+    const isBackup=!!ex.isBackup;
+    const targetW=(ex.targetWeightKg===''||ex.targetWeightKg==null)?'':ex.targetWeightKg;
+    const backupPill=isBackup?'<span class="coach-ed-backup-pill">備用</span>':'';
+    return`<div class="coach-program-editor-card ${isBackup?'is-backup':''}" data-coach-ex="${ex._id}"><div class="coach-program-editor-top"><div class="coach-program-editor-name">${Utils.escape(label)}${backupPill}</div><div class="coach-program-editor-actions"><button class="order-btn" data-action="coach-editor-move-exercise-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="coach-editor-move-exercise-down" data-id="${ex._id}" ${i===rows.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="coach-editor-remove-exercise" data-id="${ex._id}">×</button></div></div><div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="20" value="${ex.sets}" data-action="coach-editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMin}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMax"></div></div><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="coach-editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>目標重量 (kg)</label><input type="number" inputmode="decimal" step="0.5" min="0" value="${targetW}" data-action="coach-editor-field" data-id="${ex._id}" data-field="targetWeightKg"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="0" max="600" value="${ex.restSec}" data-action="coach-editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="coach-editor-field" data-id="${ex._id}" data-field="notes">${Utils.escape(ex.notes||'')}</textarea></div><div class="coach-ed-row-tools"><button class="btn btn-sub" data-action="coach-editor-swap-exercise" data-id="${ex._id}">替換動作</button><button class="btn btn-sub" data-action="coach-editor-insert-backup" data-id="${ex._id}">加入備用</button><button class="btn btn-sub" data-action="coach-editor-toggle-backup" data-id="${ex._id}">${isBackup?'取消備用':'標記為備用'}</button></div></div>`;
   }).join('');
 };
 
@@ -2606,6 +2873,10 @@ SC.handleCoachProgramEditorField=function(input){
       if(field==='repMin'&&ex.repMax<ex.repMin)ex.repMax=ex.repMin;
       if(field==='repMax'&&ex.repMax<ex.repMin)ex.repMin=ex.repMax;
     }
+  }else if(field==='targetWeightKg'){
+    const raw=String(input.value||'').trim();
+    if(!raw){ex.targetWeightKg=''}
+    else{const n=Number(raw);ex.targetWeightKg=Number.isFinite(n)?n:''}
   }else{
     ex[field]=input.value;
   }
@@ -2617,6 +2888,7 @@ SC.readCoachProgramEditorForm=function(){
   const noteInput=$('#coach-program-editor-note');
   const name=Utils.text(nameInput?nameInput.value:'');
   const note=Utils.text(noteInput?noteInput.value:'');
+  const numOrBlank=v=>{if(v===''||v===null||v===undefined)return'';const n=Number(v);return Number.isFinite(n)?n:''};
   const exercises=this.coachEditingProgram.exercises.map(ex=>({
     exerciseKey:ex.exerciseKey||'',
     sets:Utils.clamp(parseInt(ex.sets,10)||3,1,20),
@@ -2624,6 +2896,8 @@ SC.readCoachProgramEditorForm=function(){
     repMax:Utils.clamp(parseInt(ex.repMax,10)||12,1,60),
     rir:Utils.clamp(Number.isFinite(parseInt(ex.rir,10))?parseInt(ex.rir,10):2,0,5),
     restSec:Utils.clamp(parseInt(ex.restSec,10)||60,0,600),
+    targetWeightKg:numOrBlank(ex.targetWeightKg),
+    isBackup:!!ex.isBackup,
     notes:Utils.text(ex.notes)
   })).filter(ex=>!!ex.exerciseKey);
   exercises.forEach(ex=>{if(ex.repMax<ex.repMin)ex.repMax=ex.repMin});
@@ -2674,11 +2948,26 @@ SC.removeCoachProgramExercise=function(id){
   return changed;
 };
 
-SC.openCoachProgramPicker=function(){
+SC.toggleCoachProgramBackup=function(id){
+  if(!this.coachEditingProgram)return false;
+  const arr=this.coachEditingProgram.exercises||[];
+  const ex=arr.find(e=>e._id===id);
+  if(!ex)return false;
+  ex.isBackup=!ex.isBackup;
+  this.renderCoachProgramExerciseRows();
+  Toast.show(ex.isBackup?'已標記為備用':'已取消備用');
+  return true;
+};
+
+SC.openCoachProgramPicker=function(mode,targetId){
   if(!this.coachEditingProgram){Toast.show('請先開啟課表編輯');return}
   this.coachProgramPickerOpen=true;
   this.coachProgramPickerSearch='';
+  this.coachProgramPickerMode=mode||'';
+  this.coachProgramPickerTargetId=targetId||'';
   const search=$('#coach-program-picker-search');if(search)search.value='';
+  const title=$('#coach-picker-title');
+  if(title)title.textContent=(mode==='swap')?'替換動作':((mode==='backup')?'加入備用動作':'加入動作');
   this.renderCoachProgramPicker();
   const sheet=$('#coach-exercise-picker');
   if(sheet){sheet.classList.add('open');sheet.setAttribute('aria-hidden','false')}
@@ -2687,6 +2976,8 @@ SC.openCoachProgramPicker=function(){
 
 SC.closeCoachProgramPicker=function(){
   this.coachProgramPickerOpen=false;
+  this.coachProgramPickerMode='';
+  this.coachProgramPickerTargetId='';
   const sheet=$('#coach-exercise-picker');
   if(sheet){sheet.classList.remove('open');sheet.setAttribute('aria-hidden','true')}
 };
@@ -2706,8 +2997,27 @@ SC.renderCoachProgramPicker=function(){
 SC.pickerAddExercise=function(exerciseKey){
   if(!this.coachEditingProgram)return;
   const key=exerciseKey||'';if(!key)return;
-  const ex=this.createBlankCoachExercise(key);
-  this.coachEditingProgram.exercises.push(ex);
+  const mode=this.coachProgramPickerMode||'';
+  const targetId=this.coachProgramPickerTargetId||'';
+  const arr=this.coachEditingProgram.exercises||(this.coachEditingProgram.exercises=[]);
+  if(mode==='swap'&&targetId){
+    const idx=arr.findIndex(x=>x._id===targetId);
+    if(idx>=0){
+      const prev=arr[idx]||{};
+      const meta=(typeof EX_BY_KEY!=='undefined')?EX_BY_KEY[key]:null;
+      arr[idx]=Object.assign({},prev,{exerciseKey:key,name:(meta&&meta.labelZh)||prev.name||key});
+      Toast.show('已替換動作');
+    }
+  }else if(mode==='backup'&&targetId){
+    const idx=arr.findIndex(x=>x._id===targetId);
+    const ex=this.createBlankCoachExercise(key);
+    ex.isBackup=true;
+    if(idx>=0)arr.splice(idx+1,0,ex);else arr.push(ex);
+    Toast.show('已加入備用動作');
+  }else{
+    const ex=this.createBlankCoachExercise(key);
+    arr.push(ex);
+  }
   this.closeCoachProgramPicker();
   this.renderCoachProgramExerciseRows();
 };
@@ -3863,8 +4173,15 @@ const Workspace={
   },
   coachProgress(){return(CDB.data&&CDB.data.clientProgress)||[]},           // Phase 4 skeleton; Phase 6 fills
   coachProgressByClient(clientId){return this.coachProgress().filter(p=>p&&p.clientId===clientId)},
-  coachFeedbackEntries(){return(CDB.data&&CDB.data.clientFeedback)||[]},    // Phase 4 skeleton; Phase 6 fills
-  coachFeedbackByClient(clientId){return this.coachFeedbackEntries().filter(f=>f&&f.clientId===clientId)},
+  coachFeedbackEntries(){return(CDB.data&&CDB.data.clientFeedback)||[]},    // Phase 6 wired
+  coachFeedbackByClient(clientId){
+    if(!clientId)return[];
+    return this.coachFeedbackEntries().filter(f=>f&&f.clientId===clientId)
+      .slice().sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)));
+  },
+  coachFeedbackUnread(){return this.coachFeedbackEntries().filter(f=>f&&!f.viewed).slice().sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))},
+  coachFeedbackPending(){return this.coachFeedbackEntries().filter(f=>f&&f.followUp&&!f.resolved).slice().sort((a,b)=>((b.createdAt||0)-(a.createdAt||0)))},
+  coachFeedbackLatestByClient(clientId){return this.coachFeedbackByClient(clientId)[0]||null},
   coachNotes(){return(CDB.data&&CDB.data.clientNotes)||[]},                 // Phase 4 wired
   coachNotesByClient(clientId){
     if(!clientId)return[];

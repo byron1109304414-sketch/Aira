@@ -6295,4 +6295,164 @@ body{
 }
 .coach-note-item-text{font-size:14px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-break:break-word}
 .coach-note-item-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* ============================================================
+   Section 57 — HOME DENSITY PASS (Phase 4.5)
+   Goal (low-traffic):
+     Fix the home top-half crowding that pushes content down
+     after Phase 2 added .home-mode-switch. This is compression
+     only — no new elements, no new visual language.
+   Scope:
+     · #screen-home .home-layout vertical rhythm (gap ↓)
+     · #screen-home .home-hero-slim padding (↓)
+     · #screen-home .home-panel padding / gap (↓)
+     · #screen-home .home-card min-height / padding (↓)
+     · .home-mode-switch button size (slight ↓ so it stops
+       occupying its own full tab-row)
+     · .client-pill.current / .client-card.current neutralised
+       from blue accent → V5 muted white accent
+   NOT touched:
+     · L1/L2/L3 glass hierarchy, tokens, Layer-0 black base
+     · app.js, Nav, data, workspace logic
+     · Any non-home screen
+   ============================================================ */
+
+/* --- vertical rhythm: tighten gaps on the home spine --- */
+#screen-home .home-layout{gap:10px;padding-top:calc(var(--safe-top) + 6px)}
+#screen-home .home-top{margin-bottom:2px}
+
+/* --- mode switch: shorter row, same liquid glass form --- */
+.home-mode-switch{padding:4px;gap:4px}
+.home-mode-btn{min-height:32px;padding:0 18px;font-size:13px}
+
+/* --- hero: keep V5 obsidian glass but compress vertical padding --- */
+#screen-home .home-hero-slim{padding:16px 18px;gap:12px}
+#screen-home .home-hero-slim .home-cta .btn{min-height:50px;font-size:15px;border-radius:16px}
+#screen-home .home-title{font-size:13px}
+#screen-home .home-program{font-size:clamp(22px,5.6vw,30px);line-height:1.05}
+#screen-home .home-meta{font-size:13px;line-height:1.45}
+
+/* --- panel + grid: reduce vertical footprint of the quick-entry block --- */
+#screen-home .home-panel{padding:12px 14px;gap:10px;border-radius:20px}
+#screen-home .home-panel-head{padding-bottom:2px}
+#screen-home .home-panel-title{font-size:14px}
+#screen-home .home-grid{gap:10px}
+#screen-home .home-card{min-height:68px;padding:12px 14px;border-radius:16px;gap:4px}
+#screen-home .home-card strong{font-size:15px}
+#screen-home .home-card span{font-size:12px;line-height:1.3}
+#screen-home .home-tools{gap:8px}
+#screen-home .home-mini-btn{min-height:40px;border-radius:14px;font-size:12.5px}
+
+/* --- coach home: now that the duplicate 4-tile panel is gone,
+       pull the 近期活動 panel right under the hero and soften its
+       section title so the single-focus flow reads calmer. --- */
+#screen-home #home-view-coach .home-panel{margin-top:0}
+
+/* --- neutralise Phase 4 current-client blue highlight.
+       The client-detail / list still signals “目前選擇” but now in
+       the same muted-white V5 language as the rest of the system. --- */
+.client-pill.current{
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  border:1px solid var(--v5-glass-border-strong);
+}
+.client-card.current{
+  border-color:var(--v5-glass-border-strong);
+  box-shadow:
+    var(--v5-glass-inner-hi),
+    0 0 0 1px rgba(255,255,255,.05),
+    0 10px 24px rgba(0,0,0,.42);
+}
+
+@media (max-width:560px){
+  #screen-home .home-layout{gap:9px}
+  #screen-home .home-hero-slim{padding:14px 16px;gap:10px}
+  #screen-home .home-panel{padding:11px 12px;gap:9px}
+  #screen-home .home-card{min-height:62px;padding:11px 12px}
+  #screen-home .home-tools{gap:6px}
+  .home-mode-btn{min-height:30px;padding:0 16px;font-size:12.5px}
+}
+/* ============================================================
+   End Section 57.
+   ============================================================ */
 .coach-note-item-time{font-size:11px;color:var(--muted);letter-spacing:.04em}
+
+/* ============================================================
+   Section 58 · PHASE 5+6 — Editor affordances + Feedback UI
+   (V5 Dark Liquid Glass · append-only · muted neutral emphasis)
+   ============================================================ */
+
+/* --- Phase 5 · editor row affordances --- */
+.coach-ed-backup-pill{
+  display:inline-flex;align-items:center;padding:2px 8px;margin-left:8px;
+  border-radius:999px;font-size:11px;letter-spacing:.04em;
+  background:rgba(255,255,255,.05);
+  color:var(--muted,#9aa0a6);
+  border:1px solid rgba(255,255,255,.08);
+}
+.coach-program-editor-card.is-backup{
+  position:relative;
+  background:rgba(255,255,255,.02);
+  border:1px dashed rgba(255,255,255,.08);
+}
+.coach-ed-row-tools{
+  display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;
+  padding-top:10px;border-top:1px solid rgba(255,255,255,.05);
+}
+.coach-ed-row-tools .btn{min-height:30px;padding:0 12px;font-size:12px}
+
+/* --- Phase 6 · feedback screen + items --- */
+#screen-coach-feedback .coach-feedback-summary{}
+.coach-fb-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.coach-fb-summary-grid .kv{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05)}
+.coach-fb-summary-grid .kv .k{font-size:11px;color:var(--muted,#9aa0a6);letter-spacing:.04em}
+.coach-fb-summary-grid .kv .v{font-size:20px;font-weight:600;margin-top:2px}
+
+.coach-feedback-filters{display:flex;gap:8px;flex-wrap:wrap}
+.coach-feedback-filters .btn.is-on{
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.14);
+  color:#fff;
+}
+
+.coach-feedback-list{display:flex;flex-direction:column;gap:10px}
+.coach-fb-client{
+  padding:2px 2px 4px;
+  font-size:12px;color:var(--muted,#9aa0a6);letter-spacing:.04em;
+}
+.coach-fb-item{
+  padding:12px 14px;border-radius:14px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  display:flex;flex-direction:column;gap:8px;
+}
+.coach-fb-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.coach-fb-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.coach-fb-title strong{font-size:14px;letter-spacing:.02em}
+.coach-fb-pills{display:inline-flex;gap:6px;flex-wrap:wrap}
+.coach-fb-item .meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted,#9aa0a6);font-size:12px}
+.coach-fb-item .meta span{padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+.coach-fb-note{font-size:13px;line-height:1.55;color:rgba(255,255,255,.86);white-space:pre-wrap}
+.coach-fb-foot{display:flex;flex-wrap:wrap;gap:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
+.coach-fb-foot .btn{min-height:28px;padding:0 10px;font-size:12px}
+
+/* muted pill variants (Phase 6) */
+.client-pill.warn{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.12)}
+.client-pill.follow{background:rgba(255,255,255,.05);color:var(--muted,#9aa0a6);border:1px solid rgba(255,255,255,.08)}
+
+/* --- client-detail feedback block --- */
+.coach-client-detail-feedback{display:flex;flex-direction:column;gap:10px}
+#coach-client-detail .section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+
+/* --- feedback sheet tweaks --- */
+#coach-feedback-sheet .coach-sheet-body .field{margin-bottom:10px}
+#coach-feedback-sheet .inline-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#coach-feedback-sheet .row{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+#coach-feedback-sheet .row input[type=checkbox]{accent-color:#fff}
+@media (max-width:520px){
+  .coach-fb-summary-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .coach-fb-summary-grid .kv .v{font-size:18px}
+}
+/* ============================================================
+   End Section 58.
+   ============================================================ */
