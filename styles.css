@@ -6456,3 +6456,36 @@ body{
 /* ============================================================
    End Section 58.
    ============================================================ */
+
+/* ============================================================
+   Section 59 — HOME SPACING UNSTICK (Phase 7, low-traffic)
+   Goal:
+     Phase 4.5 over-compressed the self home; blocks now feel
+     glued together. Restore a little breathing room without
+     growing overall height noticeably.
+   Scope (self home priority):
+     · .home-layout spine gap (10 → 12)
+     · .home-hero-slim inner gap (12 → 14)
+     · .home-draft breathing (add a small separator margin)
+     · .home-panel inner gap (10 → 12)
+     · .home-panel-head → content visual separation (small top gap)
+     · .home-grid / .home-tools block separation
+   NOT touched:
+     · Card heights, paddings, hero padding (height-sensitive)
+     · Coach home layout
+     · Any non-home screen
+   ============================================================ */
+#screen-home .home-layout{gap:12px}
+#screen-home .home-hero-slim{gap:14px}
+#screen-home .home-draft{margin-top:2px;margin-bottom:2px}
+#screen-home .home-panel{gap:12px}
+#screen-home .home-panel-head{padding-bottom:4px}
+#screen-home .home-grid + .home-tools{margin-top:4px}
+@media (max-width:560px){
+  #screen-home .home-layout{gap:11px}
+  #screen-home .home-hero-slim{gap:12px}
+  #screen-home .home-panel{gap:11px}
+}
+/* ============================================================
+   End Section 59.
+   ============================================================ */

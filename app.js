@@ -1621,6 +1621,7 @@ function handleAction(action,el){
     case 'coach-finish-sync-program':SC.finishCoachWorkoutAndSyncProgram();break;
     case 'coach-finish-cancel':SC.closeCoachFinishSyncSheet();break;
     case 'coach-toggle-set-done':SC.toggleCoachSetDone(Number(el.dataset.exerciseIndex),Number(el.dataset.setIndex));break;
+    case 'coach-workout-add-set':SC.addCoachWorkoutSet(Number(el.dataset.exerciseIndex));break;
     case 'coach-toggle-exercise-collapse':{
       const id=el.dataset.id;if(!id)break;
       if(!SC.coachWorkoutCollapsed)SC.coachWorkoutCollapsed=new Set();
@@ -3308,6 +3309,18 @@ SC.toggleCoachSetDone=function(exerciseIndex,setIndex){
   return true;
 };
 
+SC.addCoachWorkoutSet=function(exerciseIndex){
+  if(!CWK.session)return false;
+  const ex=CWK.session.exercises&&CWK.session.exercises[exerciseIndex];
+  if(!ex)return false;
+  if(!Array.isArray(ex.sets))ex.sets=[];
+  ex.sets.push({weight:'',reps:'',done:false});
+  CWK._touch();
+  this.renderCoachWorkoutExercises();
+  this.updateCoachWorkoutProgress();
+  return true;
+};
+
 SC.populateCoachWorkoutFromDraftOrProgram=function(){
   if(CWK.session)return true;
   const clientId=this.coachCurrentClientId;
@@ -3407,6 +3420,7 @@ SC.renderCoachWorkoutExerciseCard=function(exercise,index){
       noteHtml+
       `<div class="coach-set-list">${setsHtml}</div>`+
       `<div class="coach-workout-exercise-tools">`+
+        `<button class="btn coach-workout-tool-addset" data-action="coach-workout-add-set" data-exercise-index="${index}">加組</button>`+
         `<button class="btn coach-workout-tool-swap" data-action="coach-workout-open-swap-picker" data-exercise-index="${index}">更換動作</button>`+
         removeBtn+
       `</div>`+
