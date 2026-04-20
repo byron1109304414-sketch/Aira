@@ -741,6 +741,45 @@ function getSwapCandidates(baseKey,limit=10){
     .map(k=>({key:k,score:scoreSwapCandidate(baseKey,k)}))
     .filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,limit).map(x=>x.key);
 }
+// Phase 9: explain why a swap candidate ranks. Best-effort 1–2 line reason.
+// Reads SWAP_META / EXERCISE_METADATA only; never mutates. Safe fallback: ''.
+function explainSwap(baseKey,candKey){
+  if(!baseKey||!candKey||baseKey===candKey)return'';
+  const bm=SWAP_META[baseKey]||null;
+  const cm=SWAP_META[candKey]||null;
+  const bem=(typeof Knowledge!=='undefined'&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(baseKey):null;
+  const cem=(typeof Knowledge!=='undefined'&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(candKey):null;
+  const reasons=[];
+  if(bm&&cm){
+    if(bm.mp===cm.mp&&bm.mp)reasons.push('同動作型態');
+    if(bm.pmg===cm.pmg&&bm.pmg)reasons.push('同主要肌群');
+    if(bm.er===cm.er&&bm.er)reasons.push('同動作角色');
+  }
+  if(bem&&cem){
+    if(bem.primary_muscle&&bem.primary_muscle===cem.primary_muscle&&!reasons.includes('同主要肌群'))reasons.push('主肌群一致');
+    if(bem.equipment&&cem.equipment&&bem.equipment===cem.equipment)reasons.push('同器材');
+    const bg=Array.isArray(bem.goal_tags)?bem.goal_tags:[];
+    const cg=Array.isArray(cem.goal_tags)?cem.goal_tags:[];
+    const overlap=bg.filter(g=>cg.includes(g));
+    if(overlap.length)reasons.push('目標匹配 '+overlap.slice(0,2).join('/'));
+    const fatigueOrder=['low','low_moderate','moderate','high','very_high'];
+    if(bem.fatigue_cost&&cem.fatigue_cost){
+      const bi=fatigueOrder.indexOf(bem.fatigue_cost);
+      const ci=fatigueOrder.indexOf(cem.fatigue_cost);
+      if(bi>=0&&ci>=0&&Math.abs(bi-ci)<=1&&bem.fatigue_cost!==cem.fatigue_cost)reasons.push('疲勞成本接近');
+      else if(bi>=0&&ci>=0&&ci<bi)reasons.push('較低疲勞成本');
+    }
+    const be=Array.isArray(bem.evidence_ref_ids)?bem.evidence_ref_ids:[];
+    const ce=Array.isArray(cem.evidence_ref_ids)?cem.evidence_ref_ids:[];
+    if(be.length&&ce.length&&be.some(id=>ce.includes(id)))reasons.push('共享 ACSM 依據');
+  }
+  // Fallback: if no structured reason and both in SWAP_META with same category.
+  if(!reasons.length){
+    const bd=EX_BY_KEY[baseKey];const cd=EX_BY_KEY[candKey];
+    if(bd&&cd&&bd.category===cd.category)reasons.push('同分類');
+  }
+  return reasons.slice(0,3).join(' · ');
+}
 
 
 // ================================================================
@@ -1394,7 +1433,7 @@ const EL={
         const baseDef=EX_BY_KEY[this.swapBaseKey];
         const alreadyShown=new Set([this.swapBaseKey,...recommended]);
         const sameCategory=this.src.filter(x=>!alreadyShown.has(x.key)&&x.category===(baseDef?.category||'')).slice(0,8).map(x=>x.key);
-        const mkItem=k=>{const d=EX_BY_KEY[k];if(!d)return'';return`<button class="select-option" data-library-key="${k}"><strong>${Utils.escape(d.labelEn)}｜${Utils.escape(d.labelZh)}</strong><small>${Utils.escape(d.category)} · ${Utils.escape(d.equipment)}</small></button>`};
+        const mkItem=k=>{const d=EX_BY_KEY[k];if(!d)return'';const reason=explainSwap(this.swapBaseKey,k);const rHtml=reason?`<span class="swap-reason">${Utils.escape(reason)}</span>`:'';return`<button class="select-option select-option-swap" data-library-key="${k}"><strong>${Utils.escape(d.labelEn)}｜${Utils.escape(d.labelZh)}</strong><small>${Utils.escape(d.category)} · ${Utils.escape(d.equipment)}</small>${rHtml}</button>`};
         let html='';
         if(recommended.length)html+=`<div class="swap-section-title">推薦替換</div>`+recommended.map(mkItem).join('');
         if(sameCategory.length)html+=`<div class="swap-section-title">同分類動作</div>`+sameCategory.map(mkItem).join('');
@@ -1686,7 +1725,20 @@ const SC={
       const nextHint=nextPair.primary?`<div class="subtle" style="margin-top:6px">下一張推薦 → ${Utils.escape(nextPair.primary.name)}</div>`:'';
       const incompleteTag=p.incompletePair?'<span class="pill" style="opacity:0.75">待補配對</span>':'';
       const splitPill=shortLabel?`<span class="pill">${Utils.escape(shortLabel)}</span>`:'';
-      return`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${Utils.escape(p.name)}</h3><div class="meta"><span>${Utils.escape(p.category||'Program')} · ${(p.exercises||[]).length} 個動作${p.builtIn?' · 內建':' · 自訂'}</span>${splitPill}${iS?'<span class="pill">使用中</span>':''}${rec?'<span class="pill">推薦</span>':''}${incompleteTag}</div>${p.note?`<div class="subtle" style="margin-top:8px">${Utils.escape(p.note)}</div>`:''}${nextHint}<div class="recommendation-score rec-score-badge" data-tier="${tierKey}" style="margin-top:8px"><span class="rec-tier">${tier}</span><span class="rec-dot">·</span><span class="rec-num">${sc.toFixed(1)}</span></div></div></div><div class="item-actions"><button class="btn ${iS?'strong':'primary'}" data-action="select-program" data-id="${p.id}">${iS?'已選擇':'設為今日'}</button><button class="btn btn-sub" data-action="edit-program" data-id="${p.id}">編輯</button><button class="btn btn-sub" data-action="copy-program" data-id="${p.id}">複製</button>${p.builtIn?'':`<button class="btn btn-sub btn-sub-danger" data-action="delete-program" data-id="${p.id}">刪除</button>`}</div></div>`
+      // Phase 9: ACSM rationale for built-in programs ONLY. Custom programs stay untouched.
+      const pm=p.builtIn?Knowledge.getProgramMetadata(p.id):null;
+      let acsmBlock='';
+      if(pm){
+        const fr=Utils.escape(pm.frequency_recommendation||'');
+        const pg=Utils.escape(pm.primary_goal||'');
+        const st=Utils.escape(pm.split_type||'');
+        const rs=Utils.escape(pm.rationale_summary||'');
+        const evCount=Array.isArray(pm.evidence_ref_ids)?pm.evidence_ref_ids.length:0;
+        const evPill=evCount?`<span class="pill pill-evidence">ACSM 依據 ${evCount} 筆</span>`:'';
+        const metaRow=[st,pg,fr].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+        acsmBlock=`<div class="program-rationale">${metaRow?`<div class="meta rationale-meta">${metaRow}${evPill}</div>`:''}${rs?`<div class="rationale-body">${rs}</div>`:''}</div>`;
+      }
+      return`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${Utils.escape(p.name)}</h3><div class="meta"><span>${Utils.escape(p.category||'Program')} · ${(p.exercises||[]).length} 個動作${p.builtIn?' · 內建':' · 自訂'}</span>${splitPill}${iS?'<span class="pill">使用中</span>':''}${rec?'<span class="pill">推薦</span>':''}${incompleteTag}</div>${p.note?`<div class="subtle" style="margin-top:8px">${Utils.escape(p.note)}</div>`:''}${nextHint}${acsmBlock}<div class="recommendation-score rec-score-badge" data-tier="${tierKey}" style="margin-top:8px"><span class="rec-tier">${tier}</span><span class="rec-dot">·</span><span class="rec-num">${sc.toFixed(1)}</span></div></div></div><div class="item-actions"><button class="btn ${iS?'strong':'primary'}" data-action="select-program" data-id="${p.id}">${iS?'已選擇':'設為今日'}</button><button class="btn btn-sub" data-action="edit-program" data-id="${p.id}">編輯</button><button class="btn btn-sub" data-action="copy-program" data-id="${p.id}">複製</button>${p.builtIn?'':`<button class="btn btn-sub btn-sub-danger" data-action="delete-program" data-id="${p.id}">刪除</button>`}</div></div>`
     }).join('');
   },
   openEditor(prog){this.edProg=PS.sanitize(Utils.copy(prog));$('#editor-title').textContent=prog.builtIn?'複製內建課表':'編輯自訂課表';$('#editor-program-name').value=this.edProg.name;$('#editor-program-note').value=this.edProg.note||'';this.renderEditorEx();renderAcsmStrip($('#editor-guidance-strip'),this.edProg);Nav.go('screen-editor')},
@@ -1720,7 +1772,104 @@ const SC={
   renderStrength(){const exs=Array.from(new Set(DB.data.workouts.flatMap(w=>(w.exercises||[]).map(e=>e.exerciseKey||resolveKey(e.name||''))))).sort();const defs=['barbell_bench_press','back_squat','conventional_deadlift','romanian_deadlift','pull_up'];const opts=exs.length?exs:defs;if(!opts.includes(this.strEx))this.strEx=opts[0];$('#strength-selector').innerHTML=opts.map(k=>`<button class="chip ${k===this.strEx?'active':''}" data-action="select-strength" data-name="${k}">${Utils.escape(exLabel(k))}</button>`).join('');$('#strength-chart-title').textContent=exLabel(this.strEx);const pts=DB.data.workouts.map(w=>{const e=(w.exercises||[]).find(x=>(x.exerciseKey||resolveKey(x.name||''))===this.strEx);if(!e)return null;const v=WK.e1rm(e);if(!v)return null;return{x:w.startedAt,y:v}}).filter(Boolean).reverse();drawChart($('#strength-canvas'),pts,{suffix:' kg'});$('#strength-footnote').textContent=pts.length?`共 ${pts.length} 筆資料。`:'尚無資料。'},
   renderWeight(){const l=$('#weight-list');const items=DB.data.weightEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));$('#weight-count').textContent=`${items.length} 筆`;if(!items.length)l.innerHTML='<div class="empty">尚未記錄體重</div>';else l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${i.weight} kg</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span></div></div><button class="btn danger" data-action="delete-weight" data-date="${i.date}">刪除</button></div></div>`).join('');drawChart($('#weight-canvas'),items.slice().reverse().map(i=>({x:i.date,y:Number(i.weight)})),{suffix:' kg'})},
   renderCardio(){const items=DB.data.cardioEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));const l=$('#cardio-list');if(!items.length){l.innerHTML='<div class="empty">尚未記錄有氧</div>';return}l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${Utils.escape(i.type||'Cardio')}</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span>${i.minutes?`<span>${i.minutes} 分鐘</span>`:''}${i.distance?`<span>${i.distance} km</span>`:''}${i.calories?`<span>${i.calories} kcal</span>`:''}</div>${i.note?`<div class="subtle" style="margin-top:8px">${Utils.escape(i.note)}</div>`:''}</div><button class="btn danger" data-action="delete-cardio" data-id="${i.id}">刪除</button></div></div>`).join('')},
-  renderScience(){const p=Sci.profile();const g=Sci.goal(p.goal);$('#science-profile-badge').textContent=Sci.badge(p);$('#science-top').innerHTML=Sci.weeklyTargets(p).map(i=>`<div class="summary-card"><div class="k">${Utils.escape(i.key)}</div><div class="v" style="font-size:18px">${Utils.escape(i.value)}</div></div>`).join('');$('#science-goal').value=p.goal;$('#science-level').value=p.level;$('#science-session-min').value=p.sessionMin;$('#science-equipment').value=p.equipment;$('#science-knee').checked=!!p.knee;$('#science-shoulder').checked=!!p.shoulder;$('#science-lowback').checked=!!p.lowBack;const recs=Sci.topPrograms(3);$('#science-recommendation-label').textContent=g.badge;$('#science-recommendations').innerHTML=recs.map(({program:pr,score:sc},i)=>`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(pr.name)}</h3><div class="meta"><span>${Utils.escape(pr.category||'Program')}</span><span>${(pr.exercises||[]).length} 動作</span><span>適配 ${sc.toFixed(1)}</span></div><div class="subtle" style="margin-top:8px">${Utils.escape(pr.note||'符合目前目標。')}</div></div><button class="btn primary" data-action="apply-recommended-program" data-id="${pr.id}">套用</button></div></div>`).join('');$('#science-rules-list').innerHTML=Sci.rules(p).map(r=>`<div class="muted-box science-note">${Utils.escape(r)}</div>`).join('')},
+  renderScience(){const p=Sci.profile();const g=Sci.goal(p.goal);$('#science-profile-badge').textContent=Sci.badge(p);$('#science-top').innerHTML=Sci.weeklyTargets(p).map(i=>`<div class="summary-card"><div class="k">${Utils.escape(i.key)}</div><div class="v" style="font-size:18px">${Utils.escape(i.value)}</div></div>`).join('');$('#science-goal').value=p.goal;$('#science-level').value=p.level;$('#science-session-min').value=p.sessionMin;$('#science-equipment').value=p.equipment;$('#science-knee').checked=!!p.knee;$('#science-shoulder').checked=!!p.shoulder;$('#science-lowback').checked=!!p.lowBack;const recs=Sci.topPrograms(3);$('#science-recommendation-label').textContent=g.badge;$('#science-recommendations').innerHTML=recs.map(({program:pr,score:sc},i)=>`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(pr.name)}</h3><div class="meta"><span>${Utils.escape(pr.category||'Program')}</span><span>${(pr.exercises||[]).length} 動作</span><span>適配 ${sc.toFixed(1)}</span></div><div class="subtle" style="margin-top:8px">${Utils.escape(pr.note||'符合目前目標。')}</div></div><button class="btn primary" data-action="apply-recommended-program" data-id="${pr.id}">套用</button></div></div>`).join('');$('#science-rules-list').innerHTML=Sci.rules(p).map(r=>`<div class="muted-box science-note">${Utils.escape(r)}</div>`).join('');this.renderScienceAcsm()},
+  scienceAcsmExKey:null,
+  renderScienceAcsm(){
+    // ACSM evidence layer UI — reads Knowledge only; never writes DB/CDB/WK/CWK.
+    // Safe fallback: every branch tolerates missing metadata / missing seed data.
+    const exMetaMap=(Knowledge&&Knowledge.exercise_metadata)||{};
+    const exKeys=Object.keys(exMetaMap);
+    const pickerEl=$('#science-acsm-exercise-picker');
+    const detailEl=$('#science-acsm-exercise-detail');
+    const exCountEl=$('#science-acsm-exercise-count');
+    if(exCountEl)exCountEl.textContent=exKeys.length?`${exKeys.length} 動作`:'—';
+    if(pickerEl){
+      if(!exKeys.length){pickerEl.innerHTML='';}
+      else{
+        if(!this.scienceAcsmExKey||!exKeys.includes(this.scienceAcsmExKey))this.scienceAcsmExKey=exKeys[0];
+        pickerEl.innerHTML=exKeys.map(k=>{const lbl=exLabel(k);return`<button class="chip ${k===this.scienceAcsmExKey?'active':''}" data-action="science-acsm-pick" data-key="${Utils.escape(k)}">${Utils.escape(lbl)}</button>`}).join('');
+      }
+    }
+    if(detailEl){
+      const key=this.scienceAcsmExKey;
+      const em=key?Knowledge.getExerciseMetadata(key):null;
+      if(!em){detailEl.innerHTML='<div class="empty">尚未有 ACSM 動作資料</div>';}
+      else{
+        const title=Utils.escape(exLabel(key));
+        const pm=Utils.escape(em.primary_muscle||'—');
+        const sec=(Array.isArray(em.secondary_muscles)?em.secondary_muscles:[]).map(x=>`<span class="edu-chip">${Utils.escape(x)}</span>`).join('')||'<span class="edu-chip">—</span>';
+        const mp=Utils.escape(em.movement_pattern||'—');
+        const eq=Utils.escape(em.equipment||'—');
+        const gt=(Array.isArray(em.goal_tags)?em.goal_tags:[]).map(x=>`<span class="pill">${Utils.escape(x)}</span>`).join('')||'—';
+        const sk=Utils.escape(em.skill_level||'—');
+        const fc=Utils.escape(em.fatigue_cost||'—');
+        const rep=Array.isArray(em.recommended_rep_range)&&em.recommended_rep_range.length===2?`${em.recommended_rep_range[0]}–${em.recommended_rep_range[1]} reps`:'—';
+        const st=Array.isArray(em.recommended_set_range)&&em.recommended_set_range.length===2?`${em.recommended_set_range[0]}–${em.recommended_set_range[1]} 組`:'—';
+        const fr=Utils.escape(em.recommended_frequency||'—');
+        const rg=Utils.escape(em.rest_guidance||'—');
+        const ci=em.contraindication_note?`<div class="muted-box science-warning"><strong>注意</strong><div class="subtle" style="margin-top:6px">${Utils.escape(em.contraindication_note)}</div></div>`:'';
+        const cues=(Array.isArray(em.coaching_cues)?em.coaching_cues:[]).map(x=>`<div class="edu-item">${Utils.escape(x)}</div>`).join('')||'<div class="edu-item">—</div>';
+        const refs=Knowledge.getEvidenceRefsFor('exercise',key);
+        const refsHtml=refs.length?refs.map(r=>`<div class="acsm-ref-line"><strong>${Utils.escape(r.source||'')}</strong> · ${Utils.escape(String(r.year||''))} · ${Utils.escape(r.title||'')}</div>`).join(''):'<div class="subtle">—</div>';
+        detailEl.innerHTML=`<div class="acsm-detail-head"><h3>${title}</h3><div class="meta"><span>${mp}</span><span>${eq}</span><span>難度 ${sk}</span><span>疲勞 ${fc}</span></div></div>
+<div class="acsm-kv-grid">
+  <div class="science-kv"><div class="label">主要肌群</div><div class="value">${pm}</div></div>
+  <div class="science-kv"><div class="label">次要肌群</div><div class="edu-chip-row">${sec}</div></div>
+  <div class="science-kv"><div class="label">目標</div><div class="chip-row">${gt}</div></div>
+  <div class="science-kv"><div class="label">建議次數</div><div class="value">${rep}</div></div>
+  <div class="science-kv"><div class="label">建議組數</div><div class="value">${st}</div></div>
+  <div class="science-kv"><div class="label">建議頻率</div><div class="value">${fr}</div></div>
+  <div class="science-kv"><div class="label">休息指引</div><div class="value">${rg}</div></div>
+</div>
+<div class="acsm-cue-block"><div class="label">教練提示</div><div class="edu-list">${cues}</div></div>
+${ci}
+<div class="acsm-refs-block"><div class="label">引用依據</div>${refsHtml}</div>`;
+      }
+    }
+    // --- Built-in program rationale list ---
+    const progListEl=$('#science-acsm-program-list');
+    const progCountEl=$('#science-acsm-program-count');
+    if(progListEl){
+      const allPrograms=(typeof PS!=='undefined'&&Array.isArray(PS.bi))?PS.bi:[];
+      const rows=allPrograms.map(pr=>{const pm=Knowledge.getProgramMetadata(pr.id);return pm?{pr,pm}:null;}).filter(Boolean);
+      if(progCountEl)progCountEl.textContent=rows.length?`${rows.length} 筆`:'—';
+      if(!rows.length){progListEl.innerHTML='<div class="empty">尚未有內建 ACSM 課表依據</div>';}
+      else{
+        progListEl.innerHTML=rows.map(({pr,pm})=>{
+          const nm=Utils.escape(pr.name||pr.id||'');
+          const st=Utils.escape(pm.split_type||'—');
+          const pg=Utils.escape(pm.primary_goal||'—');
+          const fr=Utils.escape(pm.frequency_recommendation||'—');
+          const dur=Array.isArray(pm.duration_range)&&pm.duration_range.length===2?`${pm.duration_range[0]}–${pm.duration_range[1]} 分`:'—';
+          const vol=Utils.escape(pm.volume_profile||'—');
+          const fp=Utils.escape(pm.fatigue_profile||'—');
+          const tp=(Array.isArray(pm.target_population)?pm.target_population:[]).map(x=>`<span class="pill">${Utils.escape(x)}</span>`).join('')||'—';
+          const rs=Utils.escape(pm.rationale_summary||'');
+          const evCount=Array.isArray(pm.evidence_ref_ids)?pm.evidence_ref_ids.length:0;
+          const evPill=evCount?`<span class="pill pill-evidence">ACSM 依據 ${evCount} 筆</span>`:'';
+          return`<div class="item acsm-program-row"><div style="min-width:0"><h3>${nm}</h3><div class="meta"><span>${st}</span><span>${pg}</span><span>${fr}</span><span>${dur}</span>${evPill}</div><div class="acsm-program-rationale">${rs}</div><div class="acsm-kv-grid acsm-kv-grid-compact"><div class="science-kv"><div class="label">量能</div><div class="value">${vol}</div></div><div class="science-kv"><div class="label">疲勞</div><div class="value">${fp}</div></div><div class="science-kv"><div class="label">目標族群</div><div class="chip-row">${tp}</div></div></div></div></div>`;
+        }).join('');
+      }
+    }
+    // --- Evidence references list ---
+    const evListEl=$('#science-acsm-evidence-list');
+    const evCountEl=$('#science-acsm-evidence-count');
+    if(evListEl){
+      const refs=Knowledge.listEvidenceRefs();
+      if(evCountEl)evCountEl.textContent=refs.length?`${refs.length} 筆`:'—';
+      if(!refs.length){evListEl.innerHTML='<div class="empty">尚未載入文獻來源</div>';}
+      else{
+        evListEl.innerHTML=refs.map(r=>{
+          const src=Utils.escape(r.source||'');
+          const yr=Utils.escape(String(r.year||''));
+          const ti=Utils.escape(r.title||'');
+          const sm=Utils.escape(r.summary||'');
+          const tags=(Array.isArray(r.tags)?r.tags:[]).map(t=>`<span class="pill">${Utils.escape(t)}</span>`).join('');
+          return`<div class="item acsm-evidence-row"><div style="min-width:0"><h3>${ti}</h3><div class="meta"><span>${src}</span><span>${yr}</span></div><div class="acsm-evidence-summary">${sm}</div>${tags?`<div class="chip-row" style="margin-top:6px">${tags}</div>`:''}</div></div>`;
+        }).join('');
+      }
+    }
+  },
   renderReports(){if(!$('#report-daily-date').value)$('#report-daily-date').value=Utils.today();if(!$('#report-weekly-date').value)$('#report-weekly-date').value=Utils.weekStart(Utils.today())},
   showDaily(r){if(!r){Toast.show('該日無訓練記錄');return}this.curDaily=r;$('#daily-report-card').classList.remove('hidden');$('#daily-report-date-badge').textContent=r.date;$('#daily-report-content').textContent=r.reportText},
   showWeekly(r){if(!r){Toast.show('該週無訓練記錄');return}this.curWeekly=r;$('#weekly-report-card').classList.remove('hidden');$('#weekly-report-range-badge').textContent=r.weekKey;$('#weekly-report-content').textContent=r.reportText},
@@ -1824,6 +1973,7 @@ function handleAction(action,el){
     case 'save-cardio':saveCardio();break;
     case 'delete-cardio':DB.data.cardioEntries=DB.data.cardioEntries.filter(x=>x.id!==el.dataset.id);DB.save();SC.renderCardio();Toast.show('已刪除');break;
     case 'save-science-profile':saveSciProfile();break;
+    case 'science-acsm-pick':SC.scienceAcsmExKey=el.dataset.key||null;SC.renderScienceAcsm();break;
     case 'apply-recommended-program':PS.select(el.dataset.id);SC.renderPrograms();SC.renderScience();SC.renderHome();Toast.show('已套用推薦課表');break;
     case 'history-filter':SC.hFilter=el.dataset.filter;SC.renderHistory();break;
     case 'program-filter':SC.programFilter=el.dataset.filter||'all';SC.renderPrograms();break;

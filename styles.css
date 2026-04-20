@@ -6560,3 +6560,215 @@ body{
 /* ============================================================
    End Section 61.
    ============================================================ */
+
+/* ============================================================
+   Section 62 — Phase 9 · ACSM UI surface + visual consistency microtuning.
+   Scope:
+     • Style the new ACSM cards on #screen-science (exercise picker,
+       program rationale list, evidence refs list).
+     • Add the built-in program rationale inline block shown inside
+       #program-list .item cards.
+     • Add the 1–2 line swap reason chip shown inside swap-mode
+       select-option buttons.
+     • Microtune inherited card/pill/list rhythm so the new surfaces
+       match the V5 dark liquid glass language already established in
+       Sections 52–61. NO restyle of existing cards; only additive
+       selectors and local overrides that target the new classes.
+   ============================================================ */
+
+/* --- ACSM cards on the Science screen --- */
+#screen-science .acsm-card{
+  /* Inherit .card pad stack metrics. Tighten local rhythm only. */
+  gap:12px;
+}
+#screen-science .acsm-card .acsm-hint{
+  font-size:12px;
+  line-height:1.55;
+  opacity:0.78;
+}
+#screen-science .acsm-chip-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+#screen-science .acsm-chip-row .chip{
+  font-size:12px;
+  padding:5px 10px;
+  border-radius:999px;
+  line-height:1.2;
+}
+#screen-science .acsm-detail{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px;
+  border-radius:14px;
+  background:rgba(255,255,255,0.025);
+  border:1px solid rgba(255,255,255,0.06);
+}
+#screen-science .acsm-detail .acsm-detail-head h3{
+  margin:0 0 4px 0;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:0.2px;
+}
+#screen-science .acsm-detail .acsm-detail-head .meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:12px;
+  opacity:0.78;
+}
+#screen-science .acsm-kv-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px 14px;
+}
+#screen-science .acsm-kv-grid-compact{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  margin-top:8px;
+}
+#screen-science .acsm-kv-grid .science-kv .label,
+#screen-science .acsm-kv-grid-compact .science-kv .label{
+  font-size:11px;
+  opacity:0.6;
+  letter-spacing:0.2px;
+  margin-bottom:2px;
+}
+#screen-science .acsm-kv-grid .science-kv .value{
+  font-size:13px;
+  font-weight:600;
+}
+#screen-science .acsm-cue-block,
+#screen-science .acsm-refs-block{
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+#screen-science .acsm-cue-block .label,
+#screen-science .acsm-refs-block .label{
+  font-size:11px;
+  opacity:0.6;
+  letter-spacing:0.2px;
+}
+#screen-science .acsm-cue-block .edu-list{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+#screen-science .acsm-cue-block .edu-item{
+  font-size:13px;
+  line-height:1.5;
+  opacity:0.92;
+}
+#screen-science .acsm-refs-block .acsm-ref-line{
+  font-size:12px;
+  line-height:1.5;
+  opacity:0.8;
+}
+#screen-science .acsm-program-list .acsm-program-row{
+  /* Leverage existing .item padding; local variations only. */
+  gap:8px;
+}
+#screen-science .acsm-program-list .acsm-program-row h3{
+  font-size:15px;
+  font-weight:700;
+}
+#screen-science .acsm-program-list .acsm-program-rationale{
+  margin-top:6px;
+  font-size:13px;
+  line-height:1.55;
+  opacity:0.88;
+}
+#screen-science .acsm-evidence-list .acsm-evidence-row h3{
+  font-size:14px;
+  font-weight:700;
+  line-height:1.4;
+}
+#screen-science .acsm-evidence-list .acsm-evidence-summary{
+  margin-top:6px;
+  font-size:12.5px;
+  line-height:1.55;
+  opacity:0.82;
+}
+
+/* --- Built-in program card ACSM rationale (inside #program-list .item) --- */
+#program-list .item .program-rationale{
+  margin-top:8px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(255,255,255,0.022);
+  border:1px solid rgba(255,255,255,0.05);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+#program-list .item .program-rationale .rationale-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  font-size:11.5px;
+  opacity:0.82;
+  align-items:center;
+}
+#program-list .item .program-rationale .rationale-body{
+  font-size:12.5px;
+  line-height:1.55;
+  opacity:0.88;
+}
+
+/* --- Evidence pill (shared) --- */
+.pill.pill-evidence{
+  background:rgba(120,180,255,0.10);
+  border:1px solid rgba(120,180,255,0.22);
+  color:rgba(200,220,255,0.95);
+  font-weight:600;
+  letter-spacing:0.2px;
+}
+
+/* --- Swap reason chip (library sheet, swap mode only) --- */
+.select-option.select-option-swap{
+  position:relative;
+  padding-right:14px;
+}
+.select-option.select-option-swap .swap-reason{
+  display:block;
+  margin-top:4px;
+  font-size:11.5px;
+  line-height:1.45;
+  opacity:0.72;
+  letter-spacing:0.1px;
+}
+
+/* --- Global consistency microtuning (V5 dark liquid glass) --- */
+/* Keep .pill heights consistent across screens. */
+.pill{
+  line-height:1.35;
+}
+/* Reinforce card-title rhythm when sitting next to a trailing pill. */
+.card .row.between.wrap > .card-title{
+  margin:0;
+}
+/* Keep .empty states uniform across ACSM cards. */
+#screen-science .acsm-card .empty{
+  padding:12px 0;
+  font-size:13px;
+  opacity:0.7;
+}
+
+@media (max-width:560px){
+  #screen-science .acsm-kv-grid{
+    grid-template-columns:1fr;
+  }
+  #screen-science .acsm-kv-grid-compact{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #program-list .item .program-rationale{
+    padding:7px 9px;
+  }
+}
+/* ============================================================
+   End Section 62.
+   ============================================================ */
