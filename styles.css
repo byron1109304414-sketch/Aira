@@ -80,6 +80,10 @@ a{color:inherit;text-decoration:none}
 #screen-home{padding-top:0;padding-bottom:0}
 .home-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
 .home-date{min-width:0;text-align:center;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-mode-switch{display:inline-flex;gap:4px;padding:4px;border-radius:14px;border:1px solid var(--border);background:rgba(18,25,39,.6);width:max-content;margin:0 auto}
+.home-mode-btn{min-height:34px;padding:0 18px;border-radius:10px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:background .16s,color .16s}
+.home-mode-btn.active{background:rgba(255,255,255,.08);color:var(--text)}
+.home-mode-btn:hover:not(.active){color:var(--text)}
 .home-hero-slim{padding:22px;border-radius:28px;background:radial-gradient(340px 160px at 88% 8%,rgba(140,240,217,.16),transparent 60%),radial-gradient(380px 220px at 14% 0%,rgba(105,183,255,.18),transparent 56%),linear-gradient(180deg,rgba(18,26,40,.92),rgba(14,21,32,.88));border:1px solid rgba(255,255,255,.10);box-shadow:var(--shadow);display:grid;gap:16px}
 .home-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .home-hero-info{display:grid;gap:6px;min-width:0}
@@ -6084,3 +6088,211 @@ textarea::placeholder,
 /* ============================================================
    End Section 54.
    ============================================================ */
+
+/* ============================================================
+   Section 55 — V5 DARK LIQUID GLASS BASE PASS (Phase 3)
+   Added: 2026-04-20. Purpose:
+     Collapse all remaining Layer-0 glow / colour fog / blue-ash
+     film so the body reads as pure black, and graduate the Phase 2
+     temp .home-mode-switch to its V5 final liquid-glass form.
+     Foreground hierarchy (L1 primary / L2 soft / L3 quiet) from
+     Sections 45/46 is preserved intact — this pass only cleans the
+     base layer and refines two hero elements.
+   Scope (allow-list):
+     · :root --bg realignment to true black
+     · html / body Layer 0
+     · #screen-home .home-hero-slim (remove top-corner white fog)
+     · .home-mode-switch / .home-mode-btn (Phase 2 temp -> V5 final)
+   NOT touched:
+     · All other Section 37-54 rules, including full L1/L2/L3 glass
+       system, active-card accent, coach cards, sheets, pickers,
+       guidance-strip, workout sticky stack, home-top centering.
+     · app.js, index.html, data flow, workspace logic.
+   Pure CSS. Minimum-diff overrides only.
+   ============================================================ */
+
+/* --- Layer 0 token realignment --- */
+:root{
+  --bg:#000;
+  --bg-elev:#0a0b0e;
+  --bg-elev-2:#111216;
+  --v5-glass-film:rgba(18,20,24,.58);
+  --v5-glass-border:rgba(255,255,255,.075);
+  --v5-glass-border-strong:rgba(255,255,255,.16);
+  --v5-glass-active:rgba(255,255,255,.08);
+  --v5-glass-inner-hi:inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+/* --- Layer 0: true black base, no radial glow, no colour fog --- */
+html{background:#000}
+body{
+  background:#000;
+  background-image:none;
+}
+
+/* --- Hero: V5 obsidian glass. Remove the two top-corner white
+       highlights that Sections 46/37 carried over — they were the
+       last vestige of Layer-0 brand-light bleeding into foreground.
+       Keep the L2 glass blur/inset/shadow so the card still reads
+       as liquid glass above a black base, not a flat rectangle. --- */
+#screen-home .home-hero-slim{
+  background:linear-gradient(180deg,rgba(22,24,28,.64),rgba(12,14,18,.72));
+  border-color:var(--v5-glass-border);
+  box-shadow:
+    var(--v5-glass-inner-hi),
+    0 16px 34px rgba(0,0,0,.5);
+  backdrop-filter:blur(14px) saturate(155%);
+  -webkit-backdrop-filter:blur(14px) saturate(155%);
+}
+
+/* --- Home mode switch (Phase 2 temp -> V5 final)
+       Same glass family as L2 cards, scaled as chrome element.
+       self and coach share this identical switch, so both views
+       read as one system. --- */
+.home-mode-switch{
+  display:inline-flex;
+  gap:6px;
+  padding:5px;
+  margin:0 auto;
+  width:max-content;
+  border-radius:16px;
+  border:1px solid var(--v5-glass-border);
+  background:var(--v5-glass-film);
+  backdrop-filter:blur(14px) saturate(150%);
+  -webkit-backdrop-filter:blur(14px) saturate(150%);
+  box-shadow:
+    var(--v5-glass-inner-hi),
+    0 10px 24px rgba(0,0,0,.4);
+}
+.home-mode-btn{
+  min-height:38px;
+  padding:0 22px;
+  border-radius:12px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--muted);
+  font-size:13.5px;
+  font-weight:700;
+  letter-spacing:.02em;
+  line-height:1;
+  cursor:pointer;
+  transition:background .18s ease, color .18s ease, border-color .18s ease;
+}
+.home-mode-btn:hover:not(.active){
+  color:var(--text);
+  background:rgba(255,255,255,.035);
+}
+.home-mode-btn.active{
+  background:var(--v5-glass-active);
+  border-color:var(--v5-glass-border-strong);
+  color:var(--text);
+  box-shadow:var(--v5-glass-inner-hi);
+}
+.home-mode-btn:focus-visible{
+  outline:none;
+  border-color:rgba(255,255,255,.22);
+  box-shadow:0 0 0 2px rgba(255,255,255,.07);
+}
+
+/* ============================================================
+   End Section 55.
+   Result:
+     - Layer 0 is true #000 across html + body.
+     - Radial / linear brand-light gradients on body are cleared.
+     - Hero top-corner white highlights are removed; hero now reads
+       as deep obsidian liquid glass, not a faintly lit panel.
+     - .home-mode-switch graduated to V5 final form: liquid glass
+       film with refined active state, ready to ship.
+     - All other Sections 37-54 rules intact; L1/L2/L3 glass
+       hierarchy unchanged.
+     - app.js, index.html, workspace logic: NOT touched.
+   ============================================================ */
+
+/* ============================================================
+   Section 56 — COACH CLIENT DETAIL WORKSPACE (Phase 4)
+   Goal: formal client workspace skeleton that reuses V5 tokens.
+     - L1 glass: .coach-client-detail-hero (primary surface)
+     - L2 glass: .coach-client-detail-goal, .coach-client-detail-note-editor
+     - L3 muted: .coach-entry-tile, .coach-note-item
+     - current-client pill marker on list cards
+   Data-isolation safeguard: rules target coach-* selectors only.
+   ============================================================ */
+
+.client-pill.current{background:rgba(120,180,255,.16);color:#cfe2ff;border:1px solid rgba(120,180,255,.32)}
+.client-card.current{border-color:rgba(120,180,255,.30);box-shadow:var(--v5-glass-inner-hi),0 0 0 1px rgba(120,180,255,.14),0 10px 28px rgba(0,0,0,.48)}
+
+#screen-coach-client-detail .coach-client-detail-hero{
+  background:linear-gradient(180deg,rgba(22,24,28,.62),rgba(12,14,18,.72));
+  border:1px solid var(--v5-glass-border);
+  box-shadow:var(--v5-glass-inner-hi),0 14px 30px rgba(0,0,0,.48);
+  backdrop-filter:blur(14px) saturate(155%);
+  -webkit-backdrop-filter:blur(14px) saturate(155%);
+  display:flex;flex-direction:column;gap:10px;
+}
+.coach-detail-hero-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.coach-detail-hero-name{margin:0;font-size:19px;font-weight:700;color:var(--text);letter-spacing:.01em}
+.coach-detail-hero-pills{display:flex;gap:6px;flex-wrap:wrap}
+.coach-detail-hero-meta{display:flex;flex-wrap:wrap;gap:6px 10px;color:var(--muted);font-size:13px}
+.coach-detail-hero-meta span{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--v5-glass-border)}
+.coach-detail-hero-tags{display:flex;flex-wrap:wrap;gap:6px;color:var(--muted);font-size:12px}
+.coach-detail-hero-tags span{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid var(--v5-glass-border)}
+.coach-detail-hero-note{font-size:13px;color:var(--muted);line-height:1.5}
+.coach-detail-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.coach-detail-hero-stats .kv{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 8px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--v5-glass-border)}
+.coach-detail-hero-stats .k{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.coach-detail-hero-stats .v{font-size:18px;font-weight:700;color:var(--text);margin-top:2px}
+.coach-detail-hero-stats .v.num{font-variant-numeric:tabular-nums}
+
+#screen-coach-client-detail .coach-client-detail-goal{
+  background:linear-gradient(180deg,rgba(18,20,24,.52),rgba(10,12,16,.64));
+  border:1px solid var(--v5-glass-border);
+  box-shadow:var(--v5-glass-inner-hi);
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+  display:flex;flex-direction:column;gap:4px;
+}
+.coach-detail-goal-title{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.coach-detail-goal-text{font-size:15px;color:var(--text);line-height:1.55}
+
+#screen-coach-client-detail .coach-client-detail-entries{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+}
+.coach-entry-tile{
+  appearance:none;-webkit-appearance:none;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;
+  min-height:78px;padding:12px 14px;border-radius:14px;
+  background:rgba(255,255,255,.025);
+  border:1px solid var(--v5-glass-border);
+  box-shadow:var(--v5-glass-inner-hi);
+  color:var(--text);text-align:left;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,transform .08s ease;
+}
+.coach-entry-tile:hover{background:rgba(255,255,255,.045);border-color:var(--v5-glass-border-strong)}
+.coach-entry-tile:active{transform:translateY(1px)}
+.coach-entry-tile .k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.coach-entry-tile .v{font-size:14px;font-weight:600;color:var(--text);line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.coach-entry-tile .v.num{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+@media (max-width:420px){#screen-coach-client-detail .coach-client-detail-entries{grid-template-columns:1fr 1fr}}
+
+#screen-coach-client-detail .coach-client-detail-recent{display:flex;flex-direction:column;gap:8px}
+
+#screen-coach-client-detail .coach-client-detail-note-editor{
+  background:linear-gradient(180deg,rgba(18,20,24,.52),rgba(10,12,16,.64));
+  border:1px solid var(--v5-glass-border);
+  box-shadow:var(--v5-glass-inner-hi);
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+}
+#screen-coach-client-detail .coach-client-detail-note-editor .field textarea{min-height:96px}
+
+#screen-coach-client-detail .coach-client-detail-notes{display:flex;flex-direction:column;gap:8px}
+.coach-note-item{
+  padding:12px 14px;border-radius:12px;
+  background:rgba(255,255,255,.025);
+  border:1px solid var(--v5-glass-border);
+  box-shadow:var(--v5-glass-inner-hi);
+  display:flex;flex-direction:column;gap:8px;
+}
+.coach-note-item-text{font-size:14px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.coach-note-item-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.coach-note-item-time{font-size:11px;color:var(--muted);letter-spacing:.04em}
