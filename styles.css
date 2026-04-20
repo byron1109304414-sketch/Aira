@@ -6489,3 +6489,37 @@ body{
 /* ============================================================
    End Section 59.
    ============================================================ */
+
+/* ============================================================
+   Section 60 — HOME SPACING MICRO-ADJUST (Phase 7.1, local only)
+   Goal:
+     Precise unstick of the remaining glue spots the user pointed
+     at. Do NOT globally enlarge the spine — keep spine gap from
+     Section 59. Only locally widen:
+       Self home  : CTA primary↔alt  / hero↔panel  / panel-head↔grid
+       Coach home : CTA primary↔alt  / hero↔first panel  / panel↔panel
+   Scope guard:
+     · Scoped by #home-view-self / #home-view-coach
+     · No changes to card heights, paddings, hero padding
+     · No changes to any non-home screen
+   ============================================================ */
+
+/* --- Self home micro-adjust --- */
+#screen-home #home-view-self .home-cta{gap:10px}
+#screen-home #home-view-self .home-hero-slim{margin-bottom:6px}
+#screen-home #home-view-self .home-panel-head{padding-bottom:8px}
+
+/* --- Coach home micro-adjust --- */
+#screen-home #home-view-coach .home-cta{gap:10px}
+#screen-home #home-view-coach .home-hero-slim + .home-panel{margin-top:4px}
+#screen-home #home-view-coach .home-panel + .home-panel{margin-top:6px}
+
+@media (max-width:560px){
+  #screen-home #home-view-self .home-hero-slim{margin-bottom:5px}
+  #screen-home #home-view-self .home-panel-head{padding-bottom:7px}
+  #screen-home #home-view-coach .home-hero-slim + .home-panel{margin-top:3px}
+  #screen-home #home-view-coach .home-panel + .home-panel{margin-top:5px}
+}
+/* ============================================================
+   End Section 60.
+   ============================================================ */
