@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0b1018">
-  <title>Aira Training Tracker v4</title>
+  <title>Aira Training Tracker v5</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,7 +18,7 @@
         <div class="home-top">
           <div class="pill">Aira</div>
           <span class="home-date" id="home-date-label"></span>
-          <div class="pill" id="home-version-pill">v4.1.0-stable</div>
+          <div class="pill" id="home-version-pill">v5.0.0-rc1</div>
         </div>
         <div class="home-mode-switch" role="tablist" aria-label="Workspace 切換">
           <button id="home-mode-self" class="home-mode-btn active" data-action="app-set-workspace-self" data-mode="self" role="tab" aria-selected="true">自主訓練</button>
@@ -156,6 +156,7 @@
         <button class="btn primary" data-action="confirm-start-workout" title="開始這份訓練">開始訓練</button>
       </div>
       <section class="stack">
+        <div class="guidance-strip" id="preview-guidance-strip" hidden></div>
         <div class="card pad stack" id="preview-summary"></div>
         <div class="list" id="preview-exercise-list"></div>
       </section>
@@ -353,7 +354,7 @@
     <main class="screen" id="screen-settings">
       <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>設定</strong><span>資料管理與版本資訊</span></div></div></div>
       <section class="settings-list">
-        <div class="settings-row"><div class="kv"><div class="k">版本</div><div class="v" id="settings-version-value">4.1.0-stable</div></div><div class="footnote">Stable · Personal + Coach</div><div class="mono" id="settings-data-stats">—</div></div>
+        <div class="settings-row"><div class="kv"><div class="k">版本</div><div class="v" id="settings-version-value">5.0.0-rc1</div></div><div class="footnote">Release Candidate · Personal + Coach</div><div class="mono" id="settings-data-stats">—</div></div>
         <div class="settings-row"><div class="kv"><div class="k">教練模式捷徑</div><div class="v">主入口已移至首頁「教練模式」，此為備用連結</div></div><button class="btn ghost" data-action="open-coach-clients">開啟</button></div>
         <div class="settings-row"><div class="kv"><div class="k">資料匯出</div><div class="v">JSON</div></div><div class="toolbar"><button class="btn" data-action="export-data">匯出資料</button><label class="btn">匯入資料<input id="import-file" type="file" accept="application/json" class="hidden"></label></div></div>
         <div class="settings-row danger-zone"><div class="kv"><div class="k">危險操作</div><div class="v">清空所有 localStorage 資料</div></div><button class="btn danger" data-action="wipe-data">清空資料</button></div>

@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='4.1.0-stable';
+const APP_VERSION='5.0.0-rc1';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -1750,19 +1750,48 @@ const SC={
     const t=$('#preview-program-title');if(t)t.textContent=sel.name||'訓練預覽';
     const sub=$('#preview-program-sub');if(sub)sub.textContent=`${sel.category||'Program'} · ${exs.length} 個動作 · ${totalSets} sets`;
     const head=$('#preview-summary');
-    if(head)head.innerHTML=`<div class="row between wrap"><div class="kv"><div class="k">課表</div><div class="v">${Utils.escape(sel.name||'')}</div></div><div class="row wrap"><span class="pill">${exs.length} 個動作</span><span class="pill">${totalSets} sets</span>${sel.builtIn?'<span class="pill">內建</span>':'<span class="pill">自訂</span>'}</div></div>${sel.note?`<div class="subtle">${Utils.escape(sel.note)}</div>`:''}`;
+    const pm=(sel&&sel.builtIn&&Knowledge&&Knowledge.getProgramMetadata)?Knowledge.getProgramMetadata(sel.id):null;
+    const pmBlock=pm?this._buildPreviewProgramAcsmBlock(pm):'';
+    if(head)head.innerHTML=`<div class="row between wrap"><div class="kv"><div class="k">課表</div><div class="v">${Utils.escape(sel.name||'')}</div></div><div class="row wrap"><span class="pill">${exs.length} 個動作</span><span class="pill">${totalSets} sets</span>${sel.builtIn?'<span class="pill">內建</span>':'<span class="pill">自訂</span>'}${pm?'<span class="pill pill-evidence">ACSM</span>':''}</div></div>${sel.note?`<div class="subtle">${Utils.escape(sel.note)}</div>`:''}${pmBlock}`;
+    const strip=$('#preview-guidance-strip');if(strip)renderAcsmStrip(strip,sel);
     const list=$('#preview-exercise-list');
     if(list){
       list.innerHTML=exs.length?exs.map((ex,i)=>{
         const nm=exDisplayName(ex);
-        return `<div class="item"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(nm)}</h3><div class="meta"><span>${ex.sets} sets</span><span>${ex.repMin}-${ex.repMax} reps</span><span>RIR ${ex.rir}</span><span>休息 ${ex.restSec}s</span></div>${ex.notes?`<div class="subtle" style="margin-top:6px">${Utils.escape(ex.notes)}</div>`:''}</div></div>`;
+        const hint=this._buildPreviewExerciseAcsmHint(ex);
+        return `<div class="item"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(nm)}</h3><div class="meta"><span>${ex.sets} sets</span><span>${ex.repMin}-${ex.repMax} reps</span><span>RIR ${ex.rir}</span><span>休息 ${ex.restSec}s</span></div>${hint}${ex.notes?`<div class="subtle" style="margin-top:6px">${Utils.escape(ex.notes)}</div>`:''}</div></div>`;
       }).join(''):'<div class="empty">此課表沒有動作</div>';
     }
     return true;
   },
+  _buildPreviewProgramAcsmBlock(pm){
+    if(!pm)return'';
+    const st=pm.split_type?Utils.escape(pm.split_type):'';
+    const pg=pm.primary_goal?Utils.escape(pm.primary_goal):'';
+    const fr=pm.frequency_recommendation?Utils.escape(pm.frequency_recommendation):'';
+    const dur=(Array.isArray(pm.duration_range)&&pm.duration_range.length===2)?`${pm.duration_range[0]}–${pm.duration_range[1]} 分`:'';
+    const rs=pm.rationale_summary?Utils.escape(pm.rationale_summary):'';
+    const metaBits=[st,pg,fr,dur].filter(Boolean).map(v=>`<span class="acsm-mini-chip">${v}</span>`).join('');
+    if(!metaBits&&!rs)return'';
+    return`<div class="preview-acsm-card" role="note"><div class="preview-acsm-head"><span class="acsm-inline-tag">ACSM 依據</span>${metaBits?`<div class="acsm-inline-chips">${metaBits}</div>`:''}</div>${rs?`<div class="preview-acsm-rationale">${rs}</div>`:''}</div>`;
+  },
+  _buildPreviewExerciseAcsmHint(ex){
+    if(!ex||!ex.exerciseKey)return'';
+    const em=(Knowledge&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(ex.exerciseKey):null;
+    if(!em)return'';
+    const chips=[];
+    if(em.primary_muscle)chips.push(`<span class="acsm-mini-chip">主 · ${Utils.escape(em.primary_muscle)}</span>`);
+    if(em.movement_pattern)chips.push(`<span class="acsm-mini-chip">${Utils.escape(em.movement_pattern)}</span>`);
+    if(Array.isArray(em.recommended_rep_range)&&em.recommended_rep_range.length===2){
+      chips.push(`<span class="acsm-mini-chip">ACSM ${em.recommended_rep_range[0]}–${em.recommended_rep_range[1]} reps</span>`);
+    }
+    if(em.fatigue_cost)chips.push(`<span class="acsm-mini-chip">疲勞 ${Utils.escape(em.fatigue_cost)}</span>`);
+    if(!chips.length)return'';
+    return`<div class="acsm-inline-hint" role="note"><span class="acsm-inline-tag">ACSM</span><div class="acsm-inline-chips">${chips.join('')}</div></div>`;
+  },
   addEditorEx(ek,afterId=null){if(!this.edProg)return;const item={exerciseKey:ek,sets:3,repMin:8,repMax:12,rir:2,restSec:60,notes:''};if(afterId){const i=this.edProg.exercises.findIndex(e=>e._id===afterId);if(i>=0)this.edProg.exercises.splice(i+1,0,item);else this.edProg.exercises.push(item)}else this.edProg.exercises.push(item);this.edProg.exercises.forEach(e=>{if(!e._id)e._id=Utils.uid('ee')});this.renderEditorEx()},
   moveEditorEx(id,dir){if(!this.edProg)return false;const l=this.edProg.exercises;const i=l.findIndex(e=>e._id===id);if(i<0)return false;const ni=Utils.clamp(i+dir,0,l.length-1);if(ni===i)return false;const[item]=l.splice(i,1);l.splice(ni,0,item);this.renderEditorEx();requestAnimationFrame(()=>{const c=document.querySelector(`[data-editor-ex="${id}"]`);if(c)c.scrollIntoView({block:'nearest',behavior:'smooth'})});return true},
-  renderEditorEx(){if(!this.edProg)return;const l=$('#editor-exercise-list');this.edProg.exercises.forEach(e=>{if(!e._id)e._id=Utils.uid('ee')});l.innerHTML=this.edProg.exercises.map((ex,i)=>`<div class="editor-card" data-editor-ex="${ex._id}"><div class="editor-top"><div class="exercise-select"><button class="select-trigger" data-action="editor-pick-exercise" data-id="${ex._id}"><span>${Utils.escape(exDisplayName(ex))}</span><strong>▾</strong></button></div><div class="editor-top-actions"><button class="order-btn" data-action="editor-move-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="editor-move-down" data-id="${ex._id}" ${i===this.edProg.exercises.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="remove-editor-exercise" data-id="${ex._id}">×</button></div></div><div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="12" value="${ex.sets}" data-action="editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="50" value="${ex.repMin}" data-action="editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="editor-field" data-id="${ex._id}" data-field="repMax"></div></div><details class="editor-advanced"><summary>進階設定 / 備註</summary><div class="editor-advanced-body"><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="15" max="600" value="${ex.restSec}" data-action="editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="editor-field" data-id="${ex._id}" data-field="notes" placeholder="動作目標、線索、風險提醒...">${Utils.escape(ex.notes||'')}</textarea></div></div></details></div>`).join('');this.closeDD()},
+  renderEditorEx(){if(!this.edProg)return;const l=$('#editor-exercise-list');this.edProg.exercises.forEach(e=>{if(!e._id)e._id=Utils.uid('ee')});l.innerHTML=this.edProg.exercises.map((ex,i)=>{const hint=this._buildPreviewExerciseAcsmHint(ex);return`<div class="editor-card" data-editor-ex="${ex._id}"><div class="editor-top"><div class="exercise-select"><button class="select-trigger" data-action="editor-pick-exercise" data-id="${ex._id}"><span>${Utils.escape(exDisplayName(ex))}</span><strong>▾</strong></button></div><div class="editor-top-actions"><button class="order-btn" data-action="editor-move-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="editor-move-down" data-id="${ex._id}" ${i===this.edProg.exercises.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="remove-editor-exercise" data-id="${ex._id}">×</button></div></div>${hint}<div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="12" value="${ex.sets}" data-action="editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="50" value="${ex.repMin}" data-action="editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="editor-field" data-id="${ex._id}" data-field="repMax"></div></div><details class="editor-advanced"><summary>進階設定 / 備註</summary><div class="editor-advanced-body"><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="15" max="600" value="${ex.restSec}" data-action="editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="editor-field" data-id="${ex._id}" data-field="notes" placeholder="動作目標、線索、風險提醒...">${Utils.escape(ex.notes||'')}</textarea></div></div></details></div>`}).join('');this.closeDD()},
   closeDD(){$$('.dropdown').forEach(d=>d.classList.remove('open'))},
   filterDD(id,kw=''){const l=$(`[data-role="dropdown-list"][data-id="${id}"]`);if(!l)return;const q=Utils.text(kw).toLowerCase();const items=EL.src.filter(x=>exMatchesQuery(x,q));l.innerHTML=items.map(i=>`<button class="select-option" data-dropdown-key="${i.key}" data-id="${id}"><strong>${Utils.escape(i.labelEn)}｜${Utils.escape(i.labelZh)}</strong><small>${Utils.escape(i.category)} · ${Utils.escape(i.equipment)}</small></button>`).join('')||'<div class="empty">找不到動作</div>'},
   renderWorkout(){if(!WK.session){Nav.go('screen-home');return}WK.renderTopBar();WK.renderSteps();WK.ensureUi();renderAcsmStrip($('#workout-guidance-strip'),WK.session);const h=$('#workout-exercises');const p=Sci.profile();h.innerHTML=WK.session.exercises.map((ex,ei)=>{const isA=ei===WK.session.currentExerciseIndex;const isC=WK.isCol(ex.id);const dc=ex.sets.filter(s=>s.done).length;const st=[isA?'目前步驟':'',`${dc}/${ex.sets.length}`,`${ex.repMin}-${ex.repMax}r`,`RIR${ex.rir}`].filter(Boolean);const edu=getEdu(ex.exerciseKey);const sci=Sci.prescription(ex,p);const pm=(edu.primary||[]).map(i=>`<span class="edu-chip">${Utils.escape(i)}</span>`).join('');const sm=(edu.secondary||[]).map(i=>`<span class="edu-chip">${Utils.escape(i)}</span>`).join('');const cu=(edu.cues||[]).map(i=>`<div class="edu-item">${Utils.escape(i)}</div>`).join('');const mk=(edu.mistakes||[]).map(i=>`<div class="edu-item">${Utils.escape(i)}</div>`).join('');const _dn=exDisplayName(ex);const _enName=_dn.includes('｜')?_dn.split('｜')[0]:_dn;const _zhName=_dn.includes('｜')?_dn.split('｜').slice(1).join('｜'):'';return`<section class="exercise-card ${isC?'collapsed':''} ${isA?'active':''}" data-ex-id="${ex.id}"><button class="exercise-summary" data-action="toggle-exercise-collapse" data-id="${ex.id}" data-index="${ei}"><div class="exercise-title"><h2 class="exercise-name">${Utils.escape(_enName)}${_zhName?`<span class="exercise-name-zh">${Utils.escape(_zhName)}</span>`:''}</h2><div class="exercise-state">${Utils.escape(st.join(' · '))}</div></div><span class="exercise-chevron">⌄</span></button><div class="exercise-body" id="exercise-panel-${ex.id}"><div class="set-list">${ex.sets.map((s,si)=>`<div class="set-row ${s.done?'done':''}"><div class="set-index">${si+1}</div><div class="field"><label>重量</label><input type="number" step="0.5" inputmode="decimal" value="${s.weight}" placeholder="${ex.suggestedWeight||''}" data-action="set-input" data-id="${ex.id}" data-set="${si}" data-field="weight"></div><div class="field"><label>次數</label><input type="number" inputmode="numeric" value="${s.reps}" placeholder="${ex.repMin}" data-action="set-input" data-id="${ex.id}" data-set="${si}" data-field="reps"></div><button class="done-mark" data-action="toggle-set" data-id="${ex.id}" data-set="${si}">${s.done?'✓':'○'}</button></div>`).join('')}</div><div class="workout-quick-actions workout-quick-tools"><button class="btn btn-sub" data-action="fill-suggested-weight" data-id="${ex.id}">套用建議重量</button><button class="btn btn-sub" data-action="add-set" data-id="${ex.id}">加組</button><button class="btn btn-sub" data-action="swap-exercise" data-id="${ex.id}">替換動作</button></div><details class="workout-secondary-details"><summary>進階設定 / 教學 / 其他操作</summary><div class="workout-secondary-content"><div class="edu-detail-stack"><details class="edu-details"><summary>教練提示</summary><div class="edu-content"><div class="edu-list">${cu||'<div class="edu-item">先把動作品質放在重量之前。</div>'}</div></div></details><details class="edu-details"><summary>常見錯誤 / 風險</summary><div class="edu-content"><div class="edu-list">${mk||'<div class="edu-item">避免用慣性補動作。</div>'}</div><div class="muted-box"><strong>注意</strong><div class="subtle" style="margin-top:6px">${Utils.escape(edu.risk||'')}</div></div></div></details><details class="edu-details"><summary>解剖重點</summary><div class="edu-content"><div class="science-kv"><div class="label">主要肌群</div><div class="edu-chip-row">${pm||'<span class="edu-chip">—</span>'}</div></div><div class="science-kv"><div class="label">次要肌群</div><div class="edu-chip-row">${sm||'<span class="edu-chip">—</span>'}</div></div><div class="science-kv"><div class="label">關節動作</div><div class="value" style="font-size:14px;font-weight:700">${Utils.escape(edu.joints||'—')}</div></div></div></details></div><div class="field"><label>備註</label><textarea class="notes" data-action="exercise-field" data-id="${ex.id}" data-field="notes">${Utils.escape(ex.notes||'')}</textarea></div><div class="inline-grid"><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="15" max="600" value="${ex.restSec}" data-action="exercise-field" data-id="${ex.id}" data-field="restSec"></div><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="exercise-field" data-id="${ex.id}" data-field="rir"></div></div><div class="inline-grid"><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="50" value="${ex.repMin}" data-action="exercise-field" data-id="${ex.id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="exercise-field" data-id="${ex.id}" data-field="repMax"></div></div><div class="muted-box science-callout ${sci.tone==='adjust'?'science-warning':''}"><strong>${Utils.escape(sci.title)}</strong><div class="subtle" style="margin-top:6px">${Utils.escape(sci.body)}</div></div><div class="target-box"><div class="mini"><div class="k">建議重量</div><div class="v">${ex.suggestedWeight===''?'—':ex.suggestedWeight}</div></div><div class="mini"><div class="k">目標 reps</div><div class="v">${ex.repMin}-${ex.repMax}</div></div><div class="mini"><div class="k">目前完成</div><div class="v">${dc}/${ex.sets.length}</div></div></div><div class="exercise-order-actions"><button class="btn ghost" data-action="workout-move-up" data-id="${ex.id}" ${ei===0?'disabled':''}>上移動作</button><button class="btn ghost" data-action="workout-move-down" data-id="${ex.id}" ${ei===WK.session.exercises.length-1?'disabled':''}>下移動作</button></div><div class="workout-quick-actions"><button class="btn ghost" data-action="clear-unfinished-sets" data-id="${ex.id}">清空未完成組</button><button class="btn ghost" data-action="remove-workout-exercise" data-id="${ex.id}">移除動作</button></div></div></details></div></section>`}).join('')},
@@ -2092,6 +2121,8 @@ function handleAction(action,el){
     case 'coach-workout-close-picker':SC.closeCoachWorkoutPicker();break;
     case 'coach-workout-picker-select':SC.handleCoachWorkoutPickerSelect(el.dataset.exerciseKey);break;
     case 'coach-workout-remove-added-exercise':SC.removeCoachWorkoutExercise(Number(el.dataset.exerciseIndex));break;
+    case 'coach-workout-move-up':if(SC.moveCoachWorkoutExercise(el.dataset.id,-1))Toast.show('已上移動作');break;
+    case 'coach-workout-move-down':if(SC.moveCoachWorkoutExercise(el.dataset.id,1))Toast.show('已下移動作');break;
     case 'coach-open-program-export':SC.openCoachProgramExport(el.dataset.id);break;
     case 'coach-open-active-program-export':SC.openCoachActiveProgramExport();break;
     case 'coach-close-program-export':SC.closeCoachProgramExport();break;
@@ -2424,6 +2455,24 @@ const CWK={
     const changed=this.session.exercises.length<before;
     if(changed)this._touch();
     return changed;
+  },
+  moveExercise(exId,dir){
+    // Coach workout in-session reorder. Touches CWK draft only — never mutates
+    // CPS template / coach program instance / self WK. Safe no-op if the
+    // exercise is missing or already at the boundary.
+    if(!this.session)return false;
+    const list=Array.isArray(this.session.exercises)?this.session.exercises:null;
+    if(!list||!list.length)return false;
+    const i=list.findIndex(e=>e&&e.id===exId);
+    if(i<0)return false;
+    const step=Number(dir)||0;
+    if(!step)return false;
+    const ni=Utils.clamp(i+step,0,list.length-1);
+    if(ni===i)return false;
+    const[item]=list.splice(i,1);
+    list.splice(ni,0,item);
+    this._touch();
+    return true;
   },
   addSet(exId){
     const ex=this._findEx(exId);if(!ex)return false;
@@ -3315,7 +3364,8 @@ SC.renderCoachProgramExerciseRows=function(){
     const isBackup=!!ex.isBackup;
     const targetW=(ex.targetWeightKg===''||ex.targetWeightKg==null)?'':ex.targetWeightKg;
     const backupPill=isBackup?'<span class="coach-ed-backup-pill">備用</span>':'';
-    return`<div class="coach-program-editor-card ${isBackup?'is-backup':''}" data-coach-ex="${ex._id}"><div class="coach-program-editor-top"><div class="coach-program-editor-name">${Utils.escape(label)}${backupPill}</div><div class="coach-program-editor-actions"><button class="order-btn" data-action="coach-editor-move-exercise-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="coach-editor-move-exercise-down" data-id="${ex._id}" ${i===rows.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="coach-editor-remove-exercise" data-id="${ex._id}">×</button></div></div><div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="20" value="${ex.sets}" data-action="coach-editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMin}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMax"></div></div><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="coach-editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>目標重量 (kg)</label><input type="number" inputmode="decimal" step="0.5" min="0" value="${targetW}" data-action="coach-editor-field" data-id="${ex._id}" data-field="targetWeightKg"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="0" max="600" value="${ex.restSec}" data-action="coach-editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="coach-editor-field" data-id="${ex._id}" data-field="notes">${Utils.escape(ex.notes||'')}</textarea></div><div class="coach-ed-row-tools"><button class="btn btn-sub" data-action="coach-editor-swap-exercise" data-id="${ex._id}">替換動作</button><button class="btn btn-sub" data-action="coach-editor-insert-backup" data-id="${ex._id}">加入備用</button><button class="btn btn-sub" data-action="coach-editor-toggle-backup" data-id="${ex._id}">${isBackup?'取消備用':'標記為備用'}</button></div></div>`;
+    const acsmHint=this._buildPreviewExerciseAcsmHint?this._buildPreviewExerciseAcsmHint(ex):'';
+    return`<div class="coach-program-editor-card ${isBackup?'is-backup':''}" data-coach-ex="${ex._id}"><div class="coach-program-editor-top"><div class="coach-program-editor-name">${Utils.escape(label)}${backupPill}</div><div class="coach-program-editor-actions"><button class="order-btn" data-action="coach-editor-move-exercise-up" data-id="${ex._id}" ${i===0?'disabled':''}>↑</button><button class="order-btn" data-action="coach-editor-move-exercise-down" data-id="${ex._id}" ${i===rows.length-1?'disabled':''}>↓</button><button class="icon-btn" data-action="coach-editor-remove-exercise" data-id="${ex._id}">×</button></div></div>${acsmHint}<div class="fine-grid"><div class="field"><label>組數</label><input type="number" inputmode="numeric" min="1" max="20" value="${ex.sets}" data-action="coach-editor-field" data-id="${ex._id}" data-field="sets"></div><div class="field"><label>Rep Min</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMin}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMin"></div><div class="field"><label>Rep Max</label><input type="number" inputmode="numeric" min="1" max="60" value="${ex.repMax}" data-action="coach-editor-field" data-id="${ex._id}" data-field="repMax"></div></div><div class="inline-grid"><div class="field"><label>RIR</label><input type="number" inputmode="numeric" min="0" max="5" value="${ex.rir}" data-action="coach-editor-field" data-id="${ex._id}" data-field="rir"></div><div class="field"><label>目標重量 (kg)</label><input type="number" inputmode="decimal" step="0.5" min="0" value="${targetW}" data-action="coach-editor-field" data-id="${ex._id}" data-field="targetWeightKg"></div><div class="field"><label>休息（秒）</label><input type="number" inputmode="numeric" min="0" max="600" value="${ex.restSec}" data-action="coach-editor-field" data-id="${ex._id}" data-field="restSec"></div></div><div class="field"><label>備註</label><textarea class="notes" data-action="coach-editor-field" data-id="${ex._id}" data-field="notes">${Utils.escape(ex.notes||'')}</textarea></div><div class="coach-ed-row-tools"><button class="btn btn-sub" data-action="coach-editor-swap-exercise" data-id="${ex._id}">替換動作</button><button class="btn btn-sub" data-action="coach-editor-insert-backup" data-id="${ex._id}">加入備用</button><button class="btn btn-sub" data-action="coach-editor-toggle-backup" data-id="${ex._id}">${isBackup?'取消備用':'標記為備用'}</button></div></div>`;
   }).join('');
 };
 
@@ -3860,6 +3910,10 @@ SC.renderCoachWorkoutExerciseCard=function(exercise,index){
   const setsHtml=sets.map((st,si)=>this.renderCoachWorkoutSetRow(st,index,si)).join('');
   const addedPill=exercise.addedInSession?`<span class="coach-workout-session-pill">本次加入</span>`:'';
   const removeBtn=exercise.addedInSession?`<button class="btn coach-workout-tool-remove" data-action="coach-workout-remove-added-exercise" data-exercise-index="${index}">移除此動作</button>`:'';
+  const totalEx=(CWK.session&&Array.isArray(CWK.session.exercises))?CWK.session.exercises.length:0;
+  const isFirst=index===0;
+  const isLast=index===totalEx-1;
+  const acsmHintHtml=this.renderCoachWorkoutAcsmHint(exercise);
   return`<div class="coach-workout-exercise ${collapsed?'collapsed':''}" data-coach-ex="${exercise.id}">`+
     `<button class="coach-workout-exercise-head" data-action="coach-toggle-exercise-collapse" data-id="${exercise.id}">`+
       `<div class="coach-workout-exercise-title">`+
@@ -3874,8 +3928,13 @@ SC.renderCoachWorkoutExerciseCard=function(exercise,index){
         `<div class="coach-workout-target"><div class="k">RIR</div><div class="v">${Utils.escape(rir)}</div></div>`+
         `<div class="coach-workout-target"><div class="k">Rest</div><div class="v">${Utils.escape(rest)}</div></div>`+
       `</div>`+
+      acsmHintHtml+
       noteHtml+
       `<div class="coach-set-list">${setsHtml}</div>`+
+      `<div class="coach-workout-exercise-order">`+
+        `<button class="btn coach-workout-tool-move" data-action="coach-workout-move-up" data-id="${exercise.id}" ${isFirst?'disabled':''}>上移動作</button>`+
+        `<button class="btn coach-workout-tool-move" data-action="coach-workout-move-down" data-id="${exercise.id}" ${isLast?'disabled':''}>下移動作</button>`+
+      `</div>`+
       `<div class="coach-workout-exercise-tools">`+
         `<button class="btn coach-workout-tool-addset" data-action="coach-workout-add-set" data-exercise-index="${index}">加組</button>`+
         `<button class="btn coach-workout-tool-swap" data-action="coach-workout-open-swap-picker" data-exercise-index="${index}">更換動作</button>`+
@@ -3883,6 +3942,25 @@ SC.renderCoachWorkoutExerciseCard=function(exercise,index){
       `</div>`+
     `</div>`+
   `</div>`;
+};
+
+// Lightweight ACSM hint shown on the coach workout exercise card. Reads
+// Knowledge metadata only; never writes. Safe empty string if no metadata.
+SC.renderCoachWorkoutAcsmHint=function(exercise){
+  if(!exercise)return'';
+  const key=exercise.exerciseKey||'';
+  if(!key)return'';
+  const em=(typeof Knowledge!=='undefined'&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(key):null;
+  if(!em)return'';
+  const chips=[];
+  if(em.primary_muscle)chips.push(`<span class="acsm-mini-chip">主 · ${Utils.escape(em.primary_muscle)}</span>`);
+  if(Array.isArray(em.recommended_rep_range)&&em.recommended_rep_range.length===2){
+    chips.push(`<span class="acsm-mini-chip">ACSM ${em.recommended_rep_range[0]}–${em.recommended_rep_range[1]} reps</span>`);
+  }
+  if(em.fatigue_cost)chips.push(`<span class="acsm-mini-chip">疲勞 ${Utils.escape(em.fatigue_cost)}</span>`);
+  if(em.rest_guidance)chips.push(`<span class="acsm-mini-chip">休息 ${Utils.escape(em.rest_guidance)}</span>`);
+  if(!chips.length)return'';
+  return`<div class="acsm-inline-hint" role="note"><span class="acsm-inline-tag">ACSM</span><div class="acsm-inline-chips">${chips.join('')}</div></div>`;
 };
 
 SC.renderCoachWorkoutSetRow=function(set,exerciseIndex,setIndex){
@@ -4225,6 +4303,23 @@ SC.removeCoachWorkoutExercise=function(exerciseIndex){
   this.renderCoachWorkoutExercises();
   this.updateCoachWorkoutProgress();
   Toast.show('已移除動作');
+  return true;
+};
+
+// Live reorder inside coach workout — touches CWK draft only.
+// Never writes back to coach program template; never pollutes self workout.
+SC.moveCoachWorkoutExercise=function(exerciseId,dir){
+  if(!CWK.session)return false;
+  const moved=CWK.moveExercise(exerciseId,dir);
+  if(!moved)return false;
+  this.renderCoachWorkoutExercises();
+  this.updateCoachWorkoutProgress();
+  requestAnimationFrame(()=>{
+    const list=document.getElementById('coach-workout-exercise-list');
+    if(!list)return;
+    const card=list.querySelector(`[data-coach-ex="${exerciseId}"]`);
+    if(card&&typeof card.scrollIntoView==='function')card.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
   return true;
 };
 
