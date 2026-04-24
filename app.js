@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.0.0-stable';
+const APP_VERSION='5.0.1-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -2008,7 +2008,7 @@ function handleAction(action,el){
     case 'program-filter':SC.programFilter=el.dataset.filter||'all';SC.renderPrograms();break;
     case 'open-detail':SC.openDetail(el.dataset.id);break;
     case 'select-strength':SC.strEx=el.dataset.name;SC.renderStrength();break;
-    case 'export-data':Utils.download(`aira-tracker-v4-${Utils.today()}.json`,JSON.stringify(DB.data,null,2));Toast.show('已匯出資料');break;
+    case 'export-data':exportFullBackup();break;
     case 'wipe-data':if(confirm('確定要清空所有資料？這個動作無法復原。')){localStorage.removeItem(APP_KEY);localStorage.removeItem(DRAFT_KEY);DB.reset();WK.session=null;WK.summary=null;SC.renderHome();Nav.go('screen-home');Toast.show('已清空資料')}break;
     case 'save-session-note':{const n=Utils.text($('#summary-session-note').value);if(WK.summary){WK.summary.sessionNote=n;const w=DB.data.workouts.find(x=>x.id===WK.summary.id);if(w){w.sessionNote=n;DB.save()}Toast.show('已儲存備註')}}break;
     case 'generate-daily-report':{const d=WK.summary?Utils.dateFromTs(WK.summary.endedAt):Utils.today();const r=Reports.daily(d);Nav.go('screen-reports');SC.showDaily(r);break}
@@ -2163,7 +2163,101 @@ function saveWeight(){const d=$('#weight-date').value||Utils.today();const w=Num
 
 function saveCardio(){const d=$('#cardio-date').value||Utils.today();const ty=Utils.text($('#cardio-type').value)||'Cardio';const mi=$('#cardio-minutes').value?Number($('#cardio-minutes').value):'';const di=$('#cardio-distance').value?Number($('#cardio-distance').value):'';const ca=$('#cardio-calories').value?Number($('#cardio-calories').value):'';const no=Utils.text($('#cardio-note').value);DB.data.cardioEntries.unshift({id:Utils.uid('cardio'),date:d,type:ty,minutes:mi,distance:di,calories:ca,note:no});DB.save();$('#cardio-type').value='';$('#cardio-minutes').value='';$('#cardio-distance').value='';$('#cardio-calories').value='';$('#cardio-note').value='';SC.renderCardio();Toast.show('已儲存有氧')}
 
-function importFile(file){if(!file)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);DB.data=DB.migrate(p);DB.save();SC.renderHome();SC.renderPrograms();SC.renderHistory();SC.renderStrength();SC.renderWeight();SC.renderCardio();SC.renderScience();SC.renderSettings();Toast.show('匯入完成')}catch(e){console.error(e);Toast.show('匯入失敗')}};r.readAsText(file)}
+// ================================================================
+// BACKUP HELPERS  (v5.0.1-stable)
+// Shared by exportFullBackup + importFile. Fully self-contained.
+// ================================================================
+
+// safeParseLS: read localStorage and JSON.parse. Returns parsed value
+// or null on any failure (missing key, invalid JSON). Never throws.
+function safeParseLS(key){
+  try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}
+  catch(e){return null}
+}
+
+// safeWriteLS: write a value to localStorage safely.
+// · null / undefined  → removeItem (clears the key)
+// · object / array    → JSON.stringify then setItem
+// · string            → write raw (draft payloads are already serialised strings)
+function safeWriteLS(key,value){
+  try{
+    if(value===null||value===undefined){localStorage.removeItem(key);return}
+    localStorage.setItem(key,typeof value==='string'?value:JSON.stringify(value));
+  }catch(e){console.warn('safeWriteLS error',key,e)}
+}
+
+// exportFullBackup: builds the full V5 backup payload and triggers download.
+// Reads DB.data (self), CDB.data (coach), draft keys, workspace.
+// NEVER writes back to any storage; purely reads + download.
+function exportFullBackup(){
+  if(!DB.data)return Toast.show('資料尚未載入');
+  if(!CDB.data)CDB.load();
+  const today=Utils.today();
+  const payload={
+    app:'Aira Training Tracker',
+    version:APP_VERSION,
+    exportedAt:Date.now(),
+    format:'aira-v5-full-backup',
+    workspace:App.get(),
+    self:{
+      storageKey:APP_KEY,
+      draftKey:DRAFT_KEY,
+      data:DB.data,
+      draft:safeParseLS(DRAFT_KEY)
+    },
+    coach:{
+      storageKey:COACH_KEY,
+      draftKey:COACH_DRAFT_KEY,
+      data:CDB.data,
+      draft:safeParseLS(COACH_DRAFT_KEY)
+    }
+  };
+  Utils.download(`aira_v5_full_backup_${today}.json`,JSON.stringify(payload,null,2));
+  Toast.show('已匯出完整備份');
+}
+
+// importFile: handles two formats.
+// 1. aira-v5-full-backup — restores self + coach + drafts + workspace.
+// 2. Legacy self-only    — only updates self data; coach data untouched.
+function importFile(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const p=JSON.parse(r.result);
+      const isFullBackup=p&&(p.format==='aira-v5-full-backup'||(p.self&&p.coach));
+      if(isFullBackup){
+        // Restore self
+        if(p.self&&p.self.data){
+          DB.data=DB.migrate(p.self.data);
+          DB.save();
+        }
+        // Restore coach (ensure CDB loaded before overwrite)
+        if(p.coach&&p.coach.data){
+          if(!CDB.data)CDB.load();
+          CDB.data=CDB.migrate(p.coach.data);
+          CDB.save();
+        }
+        // Restore drafts — null removes the key, object/string writes it
+        if(p.self){safeWriteLS(DRAFT_KEY,p.self.draft!==undefined?p.self.draft:null)}
+        if(p.coach){safeWriteLS(COACH_DRAFT_KEY,p.coach.draft!==undefined?p.coach.draft:null)}
+        // Restore workspace if valid
+        if(p.workspace===WORKSPACE_SELF||p.workspace===WORKSPACE_COACH){App.set(p.workspace)}
+      }else{
+        // Legacy self-only backup — only update self, CDB stays intact
+        DB.data=DB.migrate(p);
+        DB.save();
+      }
+      // Refresh all self renders
+      SC.renderHome();SC.renderPrograms();SC.renderHistory();SC.renderStrength();
+      SC.renderWeight();SC.renderCardio();SC.renderScience();SC.renderSettings();
+      // Invalidate coach view if currently on coach workspace
+      if(typeof SC.renderCoachClients==='function'&&App.isCoach()){SC.renderCoachClients()}
+      Toast.show('匯入完成');
+    }catch(e){console.error(e);Toast.show('匯入失敗')}
+  };
+  r.readAsText(file);
+}
 
 // ================================================================
 // 19.5 CLIENT COACHING MODULE v1 — Step 1 Data Layer Skeleton
