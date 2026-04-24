@@ -6905,3 +6905,266 @@ body{
 /* ============================================================
    End Section 63.
    ============================================================ */
+
+/* ============================================================
+   Section 64 · FINAL · v5 stable封版輪
+   Goal:
+     (A) Unify the home spine rhythm so "with-draft" and "without-
+         draft" states both read as consistent vertical cadence
+         rather than asymmetric gaps (hero→draft 26px vs draft→panel
+         14px in the pre-patch state).
+     (B) Neutralise the ACSM surfaces' blue accent so they read as
+         "quiet evidence note" instead of an alert-coloured block,
+         while still keeping ACSM recognisably distinct from plain
+         body copy.
+     (C) Final cross-screen consistency microtuning: empty states,
+         pill heights, card separators, CTA button rhythm.
+   Scope guard — strictly additive:
+     · No global token changes
+     · No non-home screen structural changes
+     · No new elements, no DOM changes
+     · Overrides target only new classes or the two precise
+       asymmetry hotspots in the home spine
+   ============================================================ */
+
+/* --- (A) Home draft rhythm unification --------------------------- */
+
+/* When the draft card IS visible (no .hidden), cancel the hero's
+   added margin-bottom from Section 61, so hero→draft and draft→panel
+   are both governed by the same #home-view-self .home-layout gap,
+   producing a consistent rhythm. When the draft card is .hidden, it
+   is display:none and is skipped from grid flow, so Section 61's
+   hero margin-bottom still applies — the "compact, no-draft" layout
+   is preserved. */
+#screen-home #home-view-self
+  .home-hero-slim:has(+ .home-draft:not(.hidden)){
+  margin-bottom:0;
+  padding-bottom:22px; /* match the panel-head rhythm w/o over-breathing */
+}
+
+/* Neutralise Section 59's tiny margins on the draft — leave spacing
+   to the grid gap so the rhythm stays symmetric. */
+#screen-home .home-draft{
+  margin-top:0;
+  margin-bottom:0;
+}
+
+/* Upgrade draft card to the V5 obsidian glass language so it no
+   longer reads as a flat low-contrast strip foreign to the hero /
+   panel. Keeps the size envelope from Section 42 but restores the
+   same glass stack (subtle top-corner glow + gradient base + soft
+   outer shadow) used by .home-hero-slim and .home-panel. */
+#screen-home .home-draft{
+  padding:12px 14px;
+  border-radius:18px;
+  background:
+    radial-gradient(260px 120px at 92% 8%,rgba(140,240,217,.09),transparent 60%),
+    linear-gradient(180deg,rgba(22,28,40,.86),rgba(16,21,31,.84));
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+}
+
+/* Draft title/meta: lift to the same rhythm as panel-head but keep
+   the strip short (single-row intent). */
+#screen-home .home-draft-title{
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:-.005em;
+  color:var(--text);
+}
+#screen-home .home-draft-meta{
+  font-size:11.5px;
+  color:var(--muted-2,#a0a3a9);
+}
+
+/* Draft actions: V5 pill-size CTA rhythm. */
+#screen-home .home-draft-actions{gap:8px}
+#screen-home .home-draft-actions .btn{
+  min-height:34px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:700;
+  border-radius:12px;
+}
+#screen-home .home-draft-actions .btn.primary{
+  background:linear-gradient(180deg,#e3e5ea 0%,#b5b9c2 100%);
+  color:#0b0c0f;
+  border:1px solid rgba(255,255,255,.12);
+}
+#screen-home .home-draft-actions .btn.danger{
+  background:transparent;
+  border:1px solid rgba(255,123,123,.22);
+  color:rgba(243,184,184,.78);
+}
+#screen-home .home-draft-actions .btn.danger:hover{
+  border-color:rgba(255,123,123,.42);
+  color:rgba(255,200,200,.92);
+  background:rgba(255,123,123,.06);
+}
+
+@media (max-width:560px){
+  #screen-home #home-view-self
+    .home-hero-slim:has(+ .home-draft:not(.hidden)){
+    padding-bottom:18px;
+  }
+  #screen-home .home-draft{padding:11px 12px;border-radius:16px}
+  #screen-home .home-draft-actions .btn{
+    min-height:32px;font-size:11.5px;padding:0 10px;
+  }
+}
+
+/* --- (B) ACSM surfaces: neutralise blue accent --------------------- */
+
+/* Inline hint used by preview / editor / coach-editor / coach-workout.
+   Move from blue tint → muted V5 neutral; keep a subtle edge so the
+   evidence framing is still legible. */
+.acsm-inline-hint{
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.acsm-inline-tag{
+  background:rgba(255,255,255,.06);
+  color:var(--muted,#9aa0a6);
+  border:1px solid rgba(255,255,255,.10);
+  font-weight:700;
+  letter-spacing:.06em;
+}
+
+/* Per-exercise ACSM hint inside preview / editor list items reads
+   as a quiet reference block. Muted chip surface. */
+.acsm-mini-chip{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--muted,#9aa0a6);
+}
+
+/* Preview-level ACSM rationale card (built-in programs only). */
+.preview-acsm-card{
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08);
+}
+.preview-acsm-rationale{
+  color:rgba(235,240,250,.82);
+}
+
+/* Evidence pill (cross-screen): was blue-tinted, now muted accent
+   consistent with other neutral pills, but slightly brighter so it
+   still signals "evidence backing". */
+.pill.pill-evidence{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10);
+  color:var(--text-soft,#dcdee2);
+  font-weight:700;
+  letter-spacing:.04em;
+}
+
+/* Swap reason chip: keep subtle, below primary label. */
+.select-option.select-option-swap .swap-reason{
+  color:var(--muted,#9aa0a6);
+  opacity:.82;
+}
+
+/* Built-in program rationale on #program-list cards: align with the
+   muted language used by inline hints. */
+#program-list .item .program-rationale{
+  background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.07);
+}
+#program-list .item .program-rationale .rationale-body{
+  color:rgba(235,240,250,.82);
+}
+
+/* --- (C) Cross-screen consistency microtuning ---------------------- */
+
+/* Empty states — unified rhythm across Self + Coach. */
+.empty,
+#preview-exercise-list .empty,
+#program-list .empty,
+#coach-program-list .empty,
+.coach-workout-empty,
+.coach-program-editor-empty{
+  padding:16px 12px;
+  text-align:center;
+  font-size:13px;
+  color:var(--muted,#9aa0a6);
+  opacity:.86;
+  letter-spacing:.01em;
+  border-radius:14px;
+  background:rgba(255,255,255,.02);
+  border:1px dashed rgba(255,255,255,.06);
+}
+
+/* Coach program card — tighten rhythm to match .card density. */
+.coach-program-card{
+  border-radius:18px;
+}
+.coach-program-card.active{
+  border-color:rgba(255,255,255,.14);
+}
+.coach-program-card-pill{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  color:var(--text-soft,#dcdee2);
+  letter-spacing:.04em;
+}
+
+/* Coach program card action row — consistent button height. */
+.coach-program-card-actions .btn{
+  min-height:34px;
+  padding:0 12px;
+  font-size:12.5px;
+  border-radius:12px;
+}
+
+/* Coach workout tools row — unify with the new order-row weight. */
+#screen-coach-workout .coach-workout-exercise-tools{
+  padding:0 14px 12px;
+  gap:8px;
+}
+#screen-coach-workout .coach-workout-exercise-tools .btn{
+  min-height:36px;
+  border-radius:12px;
+  font-size:12.5px;
+  font-weight:600;
+}
+
+/* Keep the ACSM inline hint inside coach-program-editor cards tight
+   — prevents the editor list from feeling crowded. */
+#screen-coach-program-editor
+  .coach-program-editor-card > .acsm-inline-hint{
+  margin:4px 0 2px;
+}
+
+/* Preview ACSM card: allow the rationale block to breathe without
+   causing the meta chip row to wrap awkwardly. */
+.preview-acsm-card .acsm-inline-chips{row-gap:4px}
+
+/* Sheet / picker option density — keep consistent with V5 list rows. */
+.select-option{letter-spacing:.005em}
+.select-option small{opacity:.72}
+
+/* Pill cluster inside card headers — prevent 2-row jitter when the
+   evidence pill joins. Already set row-gap in Section 63; here we
+   add a tighter column-gap for higher density across screens. */
+.card .row.between.wrap,
+.item .row.between.wrap{
+  column-gap:8px;
+}
+
+/* Final: make the "目前選擇 / 使用中" markers consistent (no blue). */
+.client-card.current .client-pill.current,
+.coach-program-card.active .coach-program-card-pill{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(255,255,255,.16);
+}
+
+@media (max-width:560px){
+  .coach-program-card-actions .btn{min-height:32px;font-size:12px}
+  #screen-coach-workout .coach-workout-exercise-tools .btn{
+    min-height:34px;font-size:12px;
+  }
+}
+/* ============================================================
+   End Section 64.  (v5 stable · final pass)
+   ============================================================ */

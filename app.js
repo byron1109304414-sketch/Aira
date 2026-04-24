@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.0.0-rc1';
+const APP_VERSION='5.0.0-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -1726,7 +1726,7 @@ const SC={
       const incompleteTag=p.incompletePair?'<span class="pill" style="opacity:0.75">待補配對</span>':'';
       const splitPill=shortLabel?`<span class="pill">${Utils.escape(shortLabel)}</span>`:'';
       // Phase 9: ACSM rationale for built-in programs ONLY. Custom programs stay untouched.
-      const pm=p.builtIn?Knowledge.getProgramMetadata(p.id):null;
+      const pm=(p.builtIn&&typeof Knowledge!=='undefined'&&Knowledge&&Knowledge.getProgramMetadata)?Knowledge.getProgramMetadata(p.id):null;
       let acsmBlock='';
       if(pm){
         const fr=Utils.escape(pm.frequency_recommendation||'');
@@ -1777,7 +1777,7 @@ const SC={
   },
   _buildPreviewExerciseAcsmHint(ex){
     if(!ex||!ex.exerciseKey)return'';
-    const em=(Knowledge&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(ex.exerciseKey):null;
+    const em=(typeof Knowledge!=='undefined'&&Knowledge&&Knowledge.getExerciseMetadata)?Knowledge.getExerciseMetadata(ex.exerciseKey):null;
     if(!em)return'';
     const chips=[];
     if(em.primary_muscle)chips.push(`<span class="acsm-mini-chip">主 · ${Utils.escape(em.primary_muscle)}</span>`);
