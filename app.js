@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.0.3-stable';
+const APP_VERSION='5.1.0-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -3518,6 +3518,17 @@ const Reports={
     wks.forEach(w=>{txt+=`\n🏋️ 課表：${w.programName}\n⏱ 時間：${Utils.formatDuration(w.durationSec)}\n📊 動作：${w.exercises.length}，完成組：${w.exercises.reduce((n,e)=>n+e.sets.filter(s=>s.done).length,0)}\n`;if(w.sessionNote)txt+=`📝 備註：${w.sessionNote}\n`;w.exercises.forEach(e=>{const ds=e.sets.filter(s=>s.done);txt+=`  • ${exDisplayName(e)}: ${ds.map((s,i)=>`Set${i+1}: ${s.weight}kg×${s.reps}`).join(', ')} (${e.repMin}-${e.repMax}r, RIR${e.rir})\n`});(w.prs||[]).forEach(pr=>txt+=`  🏆 PR: ${exLabel(pr.exerciseKey)} e1RM ${pr.e1rm.toFixed(1)}kg\n`);(w.recommendations||[]).forEach(r=>{if(r.suggestion)txt+=`  💡 ${exLabel(r.exerciseKey)}: 下次 ${r.suggestion}kg\n`})});
     if(bw)txt+=`\n⚖️ 體重：${bw.weight}kg\n`;
     if(cardio.length){txt+=`\n🏃 有氧：\n`;cardio.forEach(c=>txt+=`  ${c.type}: ${c.minutes||'?'}分 ${c.distance?c.distance+'km ':''}\n`)}
+    // --- ACSM 今日觀察 (v5.1.0 decision layer · read-only derived from Knowledge) ---
+    let acsmObs=[];
+    try{
+      if(typeof AcsmAnalyzer!=='undefined'){
+        const merged={exercises:wks.flatMap(w=>w.exercises||[])};
+        const a=AcsmAnalyzer.analyzeSession(merged);
+        acsmObs=Array.isArray(a.observations)?a.observations.slice(0,4):[];
+      }
+    }catch(e){acsmObs=[]}
+    if(acsmObs.length){txt+=`\n📋 ACSM 今日觀察：\n`;acsmObs.forEach(o=>{txt+=`  • ${o}\n`})}
+    else{txt+=`\n📋 ACSM 今日觀察：資料不足，略過 ACSM 分析。\n`}
     const ai=`以下是我的訓練日報（基於 ACSM 運動處方原則），請幫我分析並給出建議：\n\n${txt}\n\n我的科學設定：目標=${Sci.goal(Sci.profile().goal).label}，等級=${Sci.levelLabel(Sci.profile().level)}，器材=${Sci.equipLabel(Sci.profile().equipment)}\n\n請分析：\n1. 今日訓練量是否足夠（ACSM 建議每主要肌群至少 2 組、每週 2 天阻力訓練）？\n2. 重量/次數進步情況與漸進超負荷方向\n3. 動作選擇是否覆蓋主要肌群\n4. 恢復與營養建議（依我的目標）`;
     const dBestSeen={};wks.forEach(w=>w.exercises.forEach(e=>{const v=WK.e1rm(e);if(v>0&&(!dBestSeen[e.exerciseKey]||v>dBestSeen[e.exerciseKey]))dBestSeen[e.exerciseKey]=v}));
     const dailyBests=Object.entries(dBestSeen).map(([exerciseKey,e1rm])=>({exerciseKey,e1rm}));
@@ -3552,6 +3563,25 @@ const Reports={
     txt+=`  目標：${gg.label}｜建議阻力 ${gg.resistanceDays||'2–3'} 天/週，有氧 ${gg.cardio.minutes}\n`;
     txt+=`  本週阻力：${tS} 次${tS>=2?' ✓ 達到 ACSM 最低建議':' ⚠ 低於建議的每週 2 天'}\n`;
     if(cs.totalMinutes){const minTarget=pg.goal==='cardio_endurance'||pg.goal==='fat_loss'||pg.goal==='general_health'?150:60;txt+=`  有氧總量：${cs.totalMinutes} 分鐘${cs.totalMinutes>=minTarget?' ✓ 接近或達到目標':' ⚠ 可考慮增加有氧累積'}\n`}
+    // --- ACSM 週量觀察 (v5.1.0 decision layer · read-only derived from Knowledge) ---
+    let acsmWk=[];
+    try{
+      if(typeof AcsmAnalyzer!=='undefined'){
+        const a=AcsmAnalyzer.analyzeSessionList(wks);
+        acsmWk=Array.isArray(a.observations)?a.observations.slice(0,4):[];
+        // category balance hint
+        const total=cat.push+cat.pull+cat.legs;
+        if(total>=3){
+          const dom=Math.max(cat.push,cat.pull,cat.legs);
+          if(dom>=Math.ceil(total*0.6)){
+            const which=cat.push===dom?'推':(cat.pull===dom?'拉':'下肢');
+            acsmWk.push(`本週偏重${which}類動作，下週可平衡其他類別。`);
+          }
+        }
+      }
+    }catch(e){acsmWk=[]}
+    if(acsmWk.length){txt+=`\n📋 ACSM 週量觀察：\n`;acsmWk.forEach(o=>{txt+=`  • ${o}\n`})}
+    else{txt+=`\n📋 ACSM 週量觀察：資料不足，略過 ACSM 分析。\n`}
     const ai=`以下是我的訓練週報（基於 ACSM 運動處方原則），請幫我做週度分析：\n\n${txt}\n\n我的科學設定：目標=${gg.label}，等級=${Sci.levelLabel(pg.level)}，器材=${Sci.equipLabel(pg.equipment)}，${gg.acsmSummary||''}\n\n請分析：\n1. 訓練量與頻率是否達到 ACSM 基本建議\n2. 肌群分配是否平衡（推/拉/腿比例）\n3. 力量進步趨勢與漸進超負荷方向\n4. 有氧總量是否接近目標\n5. 下週建議方向\n6. 恢復與營養提醒`;
     const r={id:Utils.uid('wr'),weekKey:start,workoutIds:wks.map(w=>w.id),totalSessions:tS,totalDurationSec:tD,totalSetCount:tSets,categoryBreakdown:cat,prs,bestLifts:bests,weightChange:wc,cardioSummary:cs,reportText:txt,aiPromptText:ai,markdownText:`# 週報 ${start} ~ ${end}\n\n${txt}`};
     DB.data.weeklyReports=DB.data.weeklyReports.filter(x=>x.weekKey!==start);DB.data.weeklyReports.unshift(r);DB.save();return r
@@ -3690,7 +3720,8 @@ const SC={
     const head=$('#preview-summary');
     const pm=(sel&&sel.builtIn&&Knowledge&&Knowledge.getProgramMetadata)?Knowledge.getProgramMetadata(sel.id):null;
     const pmBlock=pm?this._buildPreviewProgramAcsmBlock(pm):'';
-    if(head)head.innerHTML=`<div class="row between wrap"><div class="kv"><div class="k">課表</div><div class="v">${Utils.escape(sel.name||'')}</div></div><div class="row wrap"><span class="pill">${exs.length} 個動作</span><span class="pill">${totalSets} sets</span>${sel.builtIn?'<span class="pill">內建</span>':'<span class="pill">自訂</span>'}${pm?'<span class="pill pill-evidence">ACSM</span>':''}</div></div>${sel.note?`<div class="subtle">${Utils.escape(sel.note)}</div>`:''}${pmBlock}`;
+    const summaryBlock=this._buildPreviewProgramAcsmSummary(sel);
+    if(head)head.innerHTML=`<div class="row between wrap"><div class="kv"><div class="k">課表</div><div class="v">${Utils.escape(sel.name||'')}</div></div><div class="row wrap"><span class="pill">${exs.length} 個動作</span><span class="pill">${totalSets} sets</span>${sel.builtIn?'<span class="pill">內建</span>':'<span class="pill">自訂</span>'}${pm?'<span class="pill pill-evidence">ACSM</span>':''}</div></div>${sel.note?`<div class="subtle">${Utils.escape(sel.note)}</div>`:''}${pmBlock}${summaryBlock}`;
     const strip=$('#preview-guidance-strip');if(strip)renderAcsmStrip(strip,sel);
     const list=$('#preview-exercise-list');
     if(list){
@@ -3712,6 +3743,23 @@ const SC={
     const metaBits=[st,pg,fr,dur].filter(Boolean).map(v=>`<span class="acsm-mini-chip">${v}</span>`).join('');
     if(!metaBits&&!rs)return'';
     return`<div class="preview-acsm-card" role="note"><div class="preview-acsm-head"><span class="acsm-inline-tag">ACSM 依據</span>${metaBits?`<div class="acsm-inline-chips">${metaBits}</div>`:''}</div>${rs?`<div class="preview-acsm-rationale">${rs}</div>`:''}</div>`;
+  },
+  _buildPreviewProgramAcsmSummary(program){
+    if(!program||typeof AcsmAnalyzer==='undefined')return'';
+    const a=AcsmAnalyzer.analyzeProgram(program);
+    if(!a||!a.total)return'';
+    const lines=[];
+    const topMuscles=Object.entries(a.muscleDist).sort((x,y)=>y[1]-x[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+    const topPatterns=Object.entries(a.patternDist).sort((x,y)=>y[1]-x[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+    if(topMuscles)lines.push(`主要肌群 ${topMuscles}`);
+    if(topPatterns)lines.push(`動作型態 ${topPatterns}`);
+    if(a.highFatigueCount)lines.push(`高疲勞動作 ${a.highFatigueCount}/${a.total}`);
+    // primary goal hint
+    const topGoal=Object.entries(a.goalDist).sort((x,y)=>y[1]-x[1]).slice(0,1)[0];
+    if(topGoal)lines.push(`主要目標傾向：${topGoal[0]}`);
+    if(!lines.length&&!a.cautions.length)return'';
+    const cautionHtml=(a.cautions||[]).slice(0,2).map(c=>`<div class="acsm-summary-caution">${Utils.escape(c)}</div>`).join('');
+    return`<div class="acsm-summary-card" role="note"><div class="acsm-summary-head"><span class="acsm-inline-tag">ACSM 摘要</span></div>${lines.length?`<div class="acsm-summary-body">${lines.map(l=>`<div class="acsm-summary-line">${Utils.escape(l)}</div>`).join('')}</div>`:''}${cautionHtml?`<div class="acsm-summary-cautions">${cautionHtml}</div>`:''}</div>`;
   },
   _buildPreviewExerciseAcsmHint(ex){
     if(!ex||!ex.exerciseKey)return'';
@@ -3739,7 +3787,38 @@ const SC={
   renderStrength(){const exs=Array.from(new Set(DB.data.workouts.flatMap(w=>(w.exercises||[]).map(e=>e.exerciseKey||resolveKey(e.name||''))))).sort();const defs=['barbell_bench_press','back_squat','conventional_deadlift','romanian_deadlift','pull_up'];const opts=exs.length?exs:defs;if(!opts.includes(this.strEx))this.strEx=opts[0];$('#strength-selector').innerHTML=opts.map(k=>`<button class="chip ${k===this.strEx?'active':''}" data-action="select-strength" data-name="${k}">${Utils.escape(exLabel(k))}</button>`).join('');$('#strength-chart-title').textContent=exLabel(this.strEx);const pts=DB.data.workouts.map(w=>{const e=(w.exercises||[]).find(x=>(x.exerciseKey||resolveKey(x.name||''))===this.strEx);if(!e)return null;const v=WK.e1rm(e);if(!v)return null;return{x:w.startedAt,y:v}}).filter(Boolean).reverse();drawChart($('#strength-canvas'),pts,{suffix:' kg'});$('#strength-footnote').textContent=pts.length?`共 ${pts.length} 筆資料。`:'尚無資料。'},
   renderWeight(){const l=$('#weight-list');const items=DB.data.weightEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));$('#weight-count').textContent=`${items.length} 筆`;if(!items.length)l.innerHTML='<div class="empty">尚未記錄體重</div>';else l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${i.weight} kg</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span></div></div><button class="btn danger" data-action="delete-weight" data-date="${i.date}">刪除</button></div></div>`).join('');drawChart($('#weight-canvas'),items.slice().reverse().map(i=>({x:i.date,y:Number(i.weight)})),{suffix:' kg'})},
   renderCardio(){const items=DB.data.cardioEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));const l=$('#cardio-list');if(!items.length){l.innerHTML='<div class="empty">尚未記錄有氧</div>';return}l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${Utils.escape(i.type||'Cardio')}</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span>${i.minutes?`<span>${i.minutes} 分鐘</span>`:''}${i.distance?`<span>${i.distance} km</span>`:''}${i.calories?`<span>${i.calories} kcal</span>`:''}</div>${i.note?`<div class="subtle" style="margin-top:8px">${Utils.escape(i.note)}</div>`:''}</div><button class="btn danger" data-action="delete-cardio" data-id="${i.id}">刪除</button></div></div>`).join('')},
-  renderScience(){const p=Sci.profile();const g=Sci.goal(p.goal);$('#science-profile-badge').textContent=Sci.badge(p);$('#science-top').innerHTML=Sci.weeklyTargets(p).map(i=>`<div class="summary-card"><div class="k">${Utils.escape(i.key)}</div><div class="v" style="font-size:18px">${Utils.escape(i.value)}</div></div>`).join('');$('#science-goal').value=p.goal;$('#science-level').value=p.level;$('#science-session-min').value=p.sessionMin;$('#science-equipment').value=p.equipment;$('#science-knee').checked=!!p.knee;$('#science-shoulder').checked=!!p.shoulder;$('#science-lowback').checked=!!p.lowBack;const recs=Sci.topPrograms(3);$('#science-recommendation-label').textContent=g.badge;$('#science-recommendations').innerHTML=recs.map(({program:pr,score:sc},i)=>`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(pr.name)}</h3><div class="meta"><span>${Utils.escape(pr.category||'Program')}</span><span>${(pr.exercises||[]).length} 動作</span><span>適配 ${sc.toFixed(1)}</span></div><div class="subtle" style="margin-top:8px">${Utils.escape(pr.note||'符合目前目標。')}</div></div><button class="btn primary" data-action="apply-recommended-program" data-id="${pr.id}">套用</button></div></div>`).join('');$('#science-rules-list').innerHTML=Sci.rules(p).map(r=>`<div class="muted-box science-note">${Utils.escape(r)}</div>`).join('');this.renderScienceAcsm()},
+  renderScience(){const p=Sci.profile();const g=Sci.goal(p.goal);$('#science-profile-badge').textContent=Sci.badge(p);$('#science-top').innerHTML=Sci.weeklyTargets(p).map(i=>`<div class="summary-card"><div class="k">${Utils.escape(i.key)}</div><div class="v" style="font-size:18px">${Utils.escape(i.value)}</div></div>`).join('');$('#science-goal').value=p.goal;$('#science-level').value=p.level;$('#science-session-min').value=p.sessionMin;$('#science-equipment').value=p.equipment;$('#science-knee').checked=!!p.knee;$('#science-shoulder').checked=!!p.shoulder;$('#science-lowback').checked=!!p.lowBack;const recs=Sci.topPrograms(3);$('#science-recommendation-label').textContent=g.badge;$('#science-recommendations').innerHTML=recs.map(({program:pr,score:sc},i)=>{const rationale=this._buildScienceRecRationale(pr);return`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(pr.name)}</h3><div class="meta"><span>${Utils.escape(pr.category||'Program')}</span><span>${(pr.exercises||[]).length} 動作</span><span>適配 ${sc.toFixed(1)}</span>${pr.builtIn?'<span class="pill pill-evidence">ACSM</span>':''}</div><div class="subtle" style="margin-top:8px">${Utils.escape(pr.note||'符合目前目標。')}</div>${rationale}</div><button class="btn primary" data-action="apply-recommended-program" data-id="${pr.id}">套用</button></div></div>`}).join('');$('#science-rules-list').innerHTML=Sci.rules(p).map(r=>`<div class="muted-box science-note">${Utils.escape(r)}</div>`).join('');this.renderScienceAcsm()},
+  _buildScienceRecRationale(program){
+    if(!program||typeof AcsmAnalyzer==='undefined')return'';
+    const a=AcsmAnalyzer.analyzeProgram(program);
+    if(!a||!a.total)return'';
+    const lines=[];
+    // Built-in: prefer program metadata short summary
+    if(program.builtIn&&a.programMetadata){
+      const pm=a.programMetadata;
+      const bits=[];
+      if(pm.split_type)bits.push(`型態 ${pm.split_type}`);
+      if(pm.primary_goal)bits.push(`目標 ${pm.primary_goal}`);
+      if(pm.frequency_recommendation)bits.push(pm.frequency_recommendation);
+      if(bits.length)lines.push(bits.join(' · '));
+      if(pm.rationale_summary){
+        const rs=String(pm.rationale_summary);
+        const trimmed=rs.length>72?rs.slice(0,68)+'…':rs;
+        lines.push(trimmed);
+      }
+    }else{
+      // Custom: derive from program exercise distribution
+      const topMuscles=Object.entries(a.muscleDist).sort((x,y)=>y[1]-x[1]).slice(0,2).map(e=>`${e[0]}×${e[1]}`).join('、');
+      const topPatterns=Object.entries(a.patternDist).sort((x,y)=>y[1]-x[1]).slice(0,2).map(e=>`${e[0]}×${e[1]}`).join('、');
+      if(topMuscles)lines.push(`主要肌群 ${topMuscles}`);
+      if(topPatterns)lines.push(`動作型態 ${topPatterns}`);
+      if(a.highFatigueCount)lines.push(`高疲勞 ${a.highFatigueCount}/${a.total}`);
+    }
+    if(!lines.length)return'';
+    const evChips=(a.evidenceRefs||[]).slice(0,2).map(r=>`<span class="acsm-mini-chip">${Utils.escape(r.source||'ACSM')}${r.year?` · ${Utils.escape(String(r.year))}`:''}</span>`).join('');
+    const tag=program.builtIn?'ACSM 依據':'ACSM 摘要';
+    return`<div class="acsm-reason-block" role="note"><div class="acsm-reason-head"><span class="acsm-inline-tag">${tag}</span>${evChips?`<div class="acsm-inline-chips">${evChips}</div>`:''}</div><div class="acsm-reason-body">${lines.map(l=>`<div class="acsm-reason-line">${Utils.escape(l)}</div>`).join('')}</div></div>`;
+  },
   scienceAcsmExKey:null,
   scienceAcsmCollapsed:true,
   scienceAcsmQuery:'',
@@ -5049,6 +5128,21 @@ SC.renderCoachClientDetail=function(){
     }
   }
 
+  // V5.1.0: ACSM coach-side hint based on client + active program (read-only)
+  const acsmEl=$('#coach-client-detail-acsm');
+  if(acsmEl){
+    let html='';
+    try{
+      if(typeof AcsmAnalyzer!=='undefined'){
+        const active=(typeof this.getCoachActiveProgram==='function')?this.getCoachActiveProgram(client.id):null;
+        const lines=AcsmAnalyzer.getCoachClientGuidance(client,active);
+        if(lines&&lines.length){
+          html=`<div class="card pad coach-client-detail-acsm" role="note"><div class="coach-client-detail-acsm-head"><span class="acsm-inline-tag">ACSM 教練提示</span></div><div class="coach-client-detail-acsm-body">${lines.slice(0,4).map(l=>`<div class="coach-client-detail-acsm-line">${Utils.escape(l)}</div>`).join('')}</div></div>`;
+        }
+      }
+    }catch(e){html=''}
+    acsmEl.innerHTML=html;
+  }
   if(noteInput)noteInput.value='';
   if(notesEl){
     const notes=Workspace.coachNotesByClient(client.id);
@@ -5382,13 +5476,47 @@ SC.renderCoachProgramCard=function(program){
   const activePill=isActive?'<span class="coach-program-card-pill">使用中</span>':'';
   const note=program.note?`<div class="coach-program-card-note">${Utils.escape(program.note)}</div>`:'';
   const updated=program.updatedAt?`<div class="coach-program-card-footer">更新：${Utils.escape(Utils.formatDateTime(program.updatedAt))}</div>`:'';
+  const acsmSummary=this._buildCoachProgramAcsmSummary?this._buildCoachProgramAcsmSummary(program):'';
   let startBtn='';
   if(isActive){
     const hasDraft=!!(CWK.session&&CWK.session.clientId===program.clientId&&CWK.session.programId===program.id);
     const label=hasDraft?'繼續訓練':'開始訓練';
     startBtn=`<button class="btn primary" data-action="start-coach-workout" data-client-id="${program.clientId}">${label}</button>`;
   }
-  return`<div class="coach-program-card ${isActive?'active':''}"><div class="coach-program-card-head"><h3 class="coach-program-card-name">${Utils.escape(program.name||'Untitled Client Program')}</h3>${activePill}</div><div class="coach-program-card-meta"><span>${exCount} 個動作</span></div>${note}${updated}<div class="coach-program-card-actions">${startBtn}<button class="btn" data-action="coach-edit-program" data-id="${program.id}">編輯</button><button class="btn ${isActive?'strong':''}" data-action="coach-set-active-program" data-id="${program.id}">${isActive?'使用中':'設為使用中'}</button><button class="btn" data-action="coach-copy-program" data-id="${program.id}">複製</button><button class="btn danger" data-action="coach-delete-program" data-id="${program.id}">刪除</button></div><div class="coach-program-card-export-row"><button class="btn" data-action="coach-open-program-export" data-id="${program.id}">輸出課表</button></div></div>`;
+  return`<div class="coach-program-card ${isActive?'active':''}"><div class="coach-program-card-head"><h3 class="coach-program-card-name">${Utils.escape(program.name||'Untitled Client Program')}</h3>${activePill}</div><div class="coach-program-card-meta"><span>${exCount} 個動作</span></div>${note}${acsmSummary}${updated}<div class="coach-program-card-actions">${startBtn}<button class="btn" data-action="coach-edit-program" data-id="${program.id}">編輯</button><button class="btn ${isActive?'strong':''}" data-action="coach-set-active-program" data-id="${program.id}">${isActive?'使用中':'設為使用中'}</button><button class="btn" data-action="coach-copy-program" data-id="${program.id}">複製</button><button class="btn danger" data-action="coach-delete-program" data-id="${program.id}">刪除</button></div><div class="coach-program-card-export-row"><button class="btn" data-action="coach-open-program-export" data-id="${program.id}">輸出課表</button></div></div>`;
+};
+
+// V5.1.0 ACSM decision layer: compact summary line for coach program card.
+// Read-only, fallback-safe; never writes CDB.
+SC._buildCoachProgramAcsmSummary=function(program){
+  if(!program||typeof AcsmAnalyzer==='undefined')return'';
+  const a=AcsmAnalyzer.analyzeProgram(program);
+  if(!a||!a.total)return'';
+  const topMuscles=Object.entries(a.muscleDist).sort((x,y)=>y[1]-x[1]).slice(0,2).map(e=>`${e[0]}×${e[1]}`).join('、');
+  const topPatterns=Object.entries(a.patternDist).sort((x,y)=>y[1]-x[1]).slice(0,2).map(e=>`${e[0]}×${e[1]}`).join('、');
+  const bits=[];
+  if(topMuscles)bits.push(`主肌群：${topMuscles}`);
+  if(topPatterns)bits.push(`型態：${topPatterns}`);
+  if(a.highFatigueCount)bits.push(`高疲勞 ${a.highFatigueCount}/${a.total}`);
+  if(!bits.length)return'';
+  return`<div class="coach-program-card-acsm" role="note"><span class="acsm-inline-tag">ACSM</span><div class="coach-program-card-acsm-body">${bits.map(b=>`<span class="coach-program-card-acsm-bit">${Utils.escape(b)}</span>`).join('')}</div></div>`;
+};
+
+// V5.1.0 ACSM decision layer: balance summary + cautions banner shown at the
+// top of the coach program editor exercise list. Read-only; never writes CDB.
+SC._buildCoachEditorAcsmSummary=function(program){
+  if(!program||typeof AcsmAnalyzer==='undefined')return'';
+  const a=AcsmAnalyzer.analyzeProgram(program);
+  if(!a||!a.total)return'';
+  const lines=[];
+  const topMuscles=Object.entries(a.muscleDist).sort((x,y)=>y[1]-x[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+  const topPatterns=Object.entries(a.patternDist).sort((x,y)=>y[1]-x[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+  if(topMuscles)lines.push(`主肌群 ${topMuscles}`);
+  if(topPatterns)lines.push(`型態 ${topPatterns}`);
+  if(a.highFatigueCount)lines.push(`高疲勞 ${a.highFatigueCount}/${a.total}`);
+  const cautions=(a.cautions||[]).slice(0,2);
+  if(!lines.length&&!cautions.length)return'';
+  return`<div class="coach-editor-acsm-card" role="note"><div class="coach-editor-acsm-head"><span class="acsm-inline-tag">ACSM 平衡摘要</span><span class="coach-editor-acsm-count">動作 ${a.total} · ACSM ${a.withMetadata}</span></div>${lines.length?`<div class="coach-editor-acsm-body">${lines.map(l=>`<div class="coach-editor-acsm-line">${Utils.escape(l)}</div>`).join('')}</div>`:''}${cautions.length?`<div class="coach-editor-acsm-cautions">${cautions.map(c=>`<div class="coach-editor-acsm-caution">${Utils.escape(c)}</div>`).join('')}</div>`:''}</div>`;
 };
 
 SC.openCoachProgramEditor=function(programId){
@@ -5431,7 +5559,9 @@ SC.renderCoachProgramExerciseRows=function(){
   const rows=this.coachEditingProgram.exercises;
   rows.forEach(ex=>{if(!ex._id)ex._id=Utils.uid('cee')});
   if(!rows.length){list.innerHTML='<div class="coach-program-editor-empty">尚未加入任何動作，點「新增動作」開始。</div>';return}
-  list.innerHTML=rows.map((ex,i)=>{
+  // V5.1.0: top-of-editor ACSM balance summary (read-only).
+  const editorSummary=this._buildCoachEditorAcsmSummary?this._buildCoachEditorAcsmSummary(this.coachEditingProgram):'';
+  list.innerHTML=editorSummary+rows.map((ex,i)=>{
     const label=this.getCoachProgramExerciseLabel(ex);
     const isBackup=!!ex.isBackup;
     const targetW=(ex.targetWeightKg===''||ex.targetWeightKg==null)?'':ex.targetWeightKg;
@@ -5954,6 +6084,20 @@ SC.renderCoachWorkoutSummary=function(){
   const subEl=$('#coach-workout-sub');if(subEl)subEl.textContent=programName;
   const cEl=$('#coach-workout-client-name');if(cEl)cEl.textContent=clientName;
   const pEl=$('#coach-workout-program-name');if(pEl)pEl.textContent=programName;
+  // V5.1.0 ACSM session summary (read-only)
+  const acsmEl=$('#coach-workout-acsm-summary');
+  if(acsmEl)acsmEl.innerHTML=this._buildCoachWorkoutAcsmSummary?this._buildCoachWorkoutAcsmSummary(s):'';
+};
+
+// V5.1.0 ACSM session summary for coach workout. Read-only. Returns
+// empty string if container missing or session invalid.
+SC._buildCoachWorkoutAcsmSummary=function(session){
+  if(!session||typeof AcsmAnalyzer==='undefined')return'';
+  const a=AcsmAnalyzer.analyzeSession(session);
+  if(!a||!a.total)return'';
+  const obs=Array.isArray(a.observations)?a.observations.slice(0,3):[];
+  if(!obs.length)return'';
+  return`<div class="coach-workout-acsm-card" role="note"><div class="coach-workout-acsm-head"><span class="acsm-inline-tag">ACSM 摘要</span><span class="coach-workout-acsm-count">${a.doneSets}/${a.totalSets} 組完成</span></div><div class="coach-workout-acsm-body">${obs.map(o=>`<div class="coach-workout-acsm-line">${Utils.escape(o)}</div>`).join('')}</div></div>`;
 };
 
 SC.renderCoachWorkoutExercises=function(){
@@ -6870,6 +7014,187 @@ const Workspace={
   // Workspace-aware dispatch. Does NOT merge pools — shapes differ.
   currentRoot(){return App.isCoach()?this.coachRoot():this.selfRoot()},
   currentDraft(){return App.isCoach()?this.coachDraft():this.selfDraft()}
+};
+
+// ================================================================
+// 19.5  ACSM DECISION LAYER (v5.1.0)
+// ----------------------------------------------------------------
+// Read-only derived helper. Reads Knowledge + EXERCISE_REGISTRY only.
+// NEVER writes to DB / CDB / WK / CWK / draft / localStorage.
+// All public methods tolerate missing metadata & malformed input,
+// always return a stable shape, and never throw.
+//
+// Used by: Science recommendation, Reports (daily/weekly),
+// Workout Preview, Coach program card / editor / workout / detail.
+// ================================================================
+const AcsmAnalyzer={
+  _safeMeta(key){
+    try{
+      if(!key||typeof Knowledge==='undefined'||!Knowledge.getExerciseMetadata)return null;
+      return Knowledge.getExerciseMetadata(key)||null;
+    }catch(e){return null}
+  },
+  _exKeyOf(ex){
+    if(!ex)return'';
+    return ex.exerciseKey||(ex.name&&typeof resolveKey==='function'?resolveKey(ex.name):'');
+  },
+  _emptyExercise(key){return{key:key||'',hasMetadata:false,primary_muscle:null,movement_pattern:null,recommended_rep_range:null,recommended_set_range:null,rest_guidance:null,fatigue_cost:null,goal_tags:[],coaching_cues:[],contraindication_note:null,evidence_refs:[]}},
+  _emptyProgram(){return{total:0,withMetadata:0,missingMetadata:0,muscleDist:{},patternDist:{},fatigueDist:{low:0,moderate:0,high:0,very_high:0,unknown:0},goalDist:{},highFatigueCount:0,hasPush:false,hasPull:false,hasLower:false,hasCore:false,hasCardio:false,programMetadata:null,evidenceRefs:[],cautions:[],summaryLines:[]}},
+  _emptySession(){return{total:0,doneSets:0,totalSets:0,highFatigueDoneCount:0,muscleDist:{},patternDist:{},observations:[]}},
+
+  analyzeExercise(key){
+    const em=this._safeMeta(key);
+    if(!em)return this._emptyExercise(key);
+    let refs=[];
+    try{const r=(Knowledge.getEvidenceRefsFor?Knowledge.getEvidenceRefsFor('exercise',key):[])||[];refs=r.map(x=>({id:x.id,source:x.source,year:x.year,title:x.title}))}catch(e){refs=[]}
+    return{
+      key,hasMetadata:true,
+      primary_muscle:em.primary_muscle||null,
+      movement_pattern:em.movement_pattern||null,
+      recommended_rep_range:Array.isArray(em.recommended_rep_range)?em.recommended_rep_range.slice():null,
+      recommended_set_range:Array.isArray(em.recommended_set_range)?em.recommended_set_range.slice():null,
+      rest_guidance:em.rest_guidance||null,
+      fatigue_cost:em.fatigue_cost||null,
+      goal_tags:Array.isArray(em.goal_tags)?em.goal_tags.slice():[],
+      coaching_cues:Array.isArray(em.coaching_cues)?em.coaching_cues.slice():[],
+      contraindication_note:em.contraindication_note||null,
+      evidence_refs:refs
+    };
+  },
+
+  analyzeProgram(program){
+    const r=this._emptyProgram();
+    if(!program||!Array.isArray(program.exercises))return r;
+    r.total=program.exercises.length;
+    program.exercises.forEach(ex=>{
+      const k=this._exKeyOf(ex);
+      const def=(typeof EX_BY_KEY!=='undefined')?EX_BY_KEY[k]:null;
+      const cat=(def&&def.category||'').toLowerCase();
+      if(cat==='push')r.hasPush=true;
+      else if(cat==='pull')r.hasPull=true;
+      else if(cat==='legs'||cat==='lower')r.hasLower=true;
+      else if(cat==='core')r.hasCore=true;
+      else if(cat==='cardio')r.hasCardio=true;
+      const em=this._safeMeta(k);
+      if(em){
+        r.withMetadata++;
+        if(em.primary_muscle)r.muscleDist[em.primary_muscle]=(r.muscleDist[em.primary_muscle]||0)+1;
+        if(em.movement_pattern)r.patternDist[em.movement_pattern]=(r.patternDist[em.movement_pattern]||0)+1;
+        const fc=em.fatigue_cost||'unknown';
+        if(r.fatigueDist[fc]===undefined)r.fatigueDist[fc]=0;
+        r.fatigueDist[fc]++;
+        if(fc==='high'||fc==='very_high')r.highFatigueCount++;
+        if(Array.isArray(em.goal_tags))em.goal_tags.forEach(g=>{r.goalDist[g]=(r.goalDist[g]||0)+1});
+      }else{
+        r.missingMetadata++;
+      }
+    });
+    try{
+      if(program.builtIn&&Knowledge.getProgramMetadata){
+        const pm=Knowledge.getProgramMetadata(program.id);
+        if(pm)r.programMetadata=pm;
+      }
+    }catch(e){}
+    try{
+      if(program.builtIn&&Knowledge.getEvidenceRefsFor){
+        const refs=Knowledge.getEvidenceRefsFor('program',program.id)||[];
+        r.evidenceRefs=refs.map(x=>({id:x.id,source:x.source,year:x.year,title:x.title}));
+      }
+    }catch(e){}
+    if(r.total>=4){
+      const mEntries=Object.entries(r.muscleDist).sort((a,b)=>b[1]-a[1]);
+      if(mEntries.length&&mEntries[0][1]>=Math.ceil(r.total*0.55)){
+        r.cautions.push(`動作集中於 ${mEntries[0][0]}（${mEntries[0][1]}/${r.total}），可考慮加入其他肌群以維持平衡。`);
+      }
+      if(r.highFatigueCount>=Math.max(3,Math.ceil(r.total*0.6))){
+        r.cautions.push(`高疲勞動作 ${r.highFatigueCount} 個（共 ${r.total}），建議安排足夠休息與恢復日。`);
+      }
+      if(!r.hasPush&&r.total>=5)r.cautions.push('未涵蓋推（push）類動作，可視目標補上。');
+      if(!r.hasPull&&r.total>=5)r.cautions.push('未涵蓋拉（pull）類動作，可視目標補上。');
+      if(!r.hasLower&&r.total>=5)r.cautions.push('未涵蓋下肢（legs）動作，可視目標補上。');
+    }
+    if(r.total){
+      r.summaryLines.push(`動作數 ${r.total}（已連結 ACSM ${r.withMetadata}）`);
+      const topMuscles=Object.entries(r.muscleDist).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+      if(topMuscles)r.summaryLines.push(`主要肌群：${topMuscles}`);
+      const topPatterns=Object.entries(r.patternDist).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>`${e[0]}×${e[1]}`).join('、');
+      if(topPatterns)r.summaryLines.push(`動作型態：${topPatterns}`);
+      if(r.highFatigueCount)r.summaryLines.push(`高疲勞動作 ${r.highFatigueCount} 個`);
+    }
+    return r;
+  },
+
+  analyzeSession(session){
+    const r=this._emptySession();
+    if(!session||!Array.isArray(session.exercises))return r;
+    r.total=session.exercises.length;
+    session.exercises.forEach(ex=>{
+      const sets=Array.isArray(ex.sets)?ex.sets:[];
+      r.totalSets+=sets.length;
+      const dn=sets.filter(s=>s&&s.done).length;
+      r.doneSets+=dn;
+      const k=this._exKeyOf(ex);
+      const em=this._safeMeta(k);
+      if(!em)return;
+      if(em.primary_muscle)r.muscleDist[em.primary_muscle]=(r.muscleDist[em.primary_muscle]||0)+dn;
+      if(em.movement_pattern)r.patternDist[em.movement_pattern]=(r.patternDist[em.movement_pattern]||0)+dn;
+      if((em.fatigue_cost==='high'||em.fatigue_cost==='very_high')&&dn>0)r.highFatigueDoneCount++;
+    });
+    if(!r.total){r.observations.push('資料不足，略過 ACSM 分析。');return r}
+    const topM=Object.entries(r.muscleDist).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    if(topM.length)r.observations.push(`主要刺激：${topM.map(e=>`${e[0]}（${e[1]} 組）`).join('、')}`);
+    const topP=Object.entries(r.patternDist).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    if(topP.length)r.observations.push(`動作型態：${topP.map(e=>`${e[0]}（${e[1]} 組）`).join('、')}`);
+    if(r.highFatigueDoneCount>=3)r.observations.push(`高疲勞動作 ${r.highFatigueDoneCount} 個，建議今晚補充蛋白與睡眠。`);
+    if(r.totalSets&&r.doneSets/r.totalSets<0.7)r.observations.push('完成率偏低，下次可調整動作數或保留時間。');
+    if(!r.observations.length)r.observations.push('資料有限，僅供參考。');
+    return r;
+  },
+
+  // Aggregate multi-session view (for weekly reports). Sessions assumed to
+  // be self / coach session shape with .exercises[].sets[].
+  analyzeSessionList(sessions){
+    const r={count:0,totalSets:0,muscleDist:{},patternDist:{},highFatigueCount:0,observations:[]};
+    if(!Array.isArray(sessions)||!sessions.length){r.observations.push('資料不足，略過 ACSM 分析。');return r}
+    sessions.forEach(s=>{
+      const a=this.analyzeSession(s);
+      r.count++;
+      r.totalSets+=a.doneSets;
+      r.highFatigueCount+=a.highFatigueDoneCount;
+      Object.entries(a.muscleDist).forEach(([k,v])=>{r.muscleDist[k]=(r.muscleDist[k]||0)+v});
+      Object.entries(a.patternDist).forEach(([k,v])=>{r.patternDist[k]=(r.patternDist[k]||0)+v});
+    });
+    const topM=Object.entries(r.muscleDist).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const topP=Object.entries(r.patternDist).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    if(topM.length)r.observations.push(`主要肌群：${topM.map(e=>`${e[0]}（${e[1]} 組）`).join('、')}`);
+    if(topP.length)r.observations.push(`動作型態：${topP.map(e=>`${e[0]}（${e[1]} 組）`).join('、')}`);
+    if(r.highFatigueCount)r.observations.push(`高疲勞動作累積 ${r.highFatigueCount} 個，注意累積疲勞與恢復。`);
+    if(!r.totalSets)r.observations.push('週量 0，請考慮排入至少 2 次阻力訓練。');
+    return r;
+  },
+
+  getProgramWarnings(program){
+    return this.analyzeProgram(program).cautions||[];
+  },
+
+  getCoachClientGuidance(client,programOrSession){
+    const lines=[];
+    if(!client)return lines;
+    const goal=(client.goal||'').toString().trim();
+    if(programOrSession&&Array.isArray(programOrSession.exercises)){
+      const a=this.analyzeProgram(programOrSession);
+      if(a.total){
+        if(goal)lines.push(`學員目標：${goal}（請與課表方向核對）。`);
+        if(a.highFatigueCount>=Math.max(3,Math.ceil(a.total*0.6)))lines.push('高疲勞動作較多，建議安排充足恢復與睡眠評估。');
+        const topMuscles=Object.entries(a.muscleDist).sort((x,y)=>y[1]-x[1]).slice(0,2).map(e=>`${e[0]}×${e[1]}`).join('、');
+        if(topMuscles)lines.push(`主要刺激：${topMuscles}`);
+        if(!a.hasPush&&!a.hasPull&&a.total>=4)lines.push('整份課表偏單一方向，可補上水平推/拉做平衡。');
+      }
+    }
+    const sources=[client.note,client.scheduleNote,client.goal].filter(Boolean).join(' ');
+    if(/痛|疼|傷|不適|injury|pain/i.test(sources))lines.push('學員資料含疼痛/傷勢線索，安排前請再次確認。');
+    return lines;
+  }
 };
 
 // ================================================================
