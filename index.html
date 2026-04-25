@@ -18,7 +18,7 @@
         <div class="home-top">
           <div class="pill">Aira</div>
           <span class="home-date" id="home-date-label"></span>
-          <div class="pill" id="home-version-pill">v5.0.2-stable</div>
+          <div class="pill" id="home-version-pill">v5.0.3-stable</div>
         </div>
         <div class="home-mode-switch" role="tablist" aria-label="Workspace 切換">
           <button id="home-mode-self" class="home-mode-btn active" data-action="app-set-workspace-self" data-mode="self" role="tab" aria-selected="true">自主訓練</button>
@@ -285,10 +285,14 @@
         <div class="card pad stack"><div class="row between wrap"><h2 class="card-title">推薦課表</h2><span class="pill" id="science-recommendation-label">—</span></div><div class="list" id="science-recommendations"></div></div>
         <div class="card pad stack"><div class="row between wrap"><h2 class="card-title">App 會怎麼套用</h2><span class="pill">收合時仍維持極簡</span></div><div class="list" id="science-rules-list"></div></div>
         <div class="card pad stack acsm-card">
-          <div class="row between wrap"><h2 class="card-title">ACSM 動作資料庫</h2><span class="pill" id="science-acsm-exercise-count">—</span></div>
+          <div class="row between wrap"><h2 class="card-title">ACSM 動作資料庫</h2><div class="row" style="gap:8px;flex-shrink:0"><span class="pill" id="science-acsm-exercise-count">—</span><button class="btn ghost acsm-toggle-btn" data-action="science-acsm-toggle-exercises" id="science-acsm-toggle-btn">展開</button></div></div>
           <div class="subtle acsm-hint">依 ACSM 準則整理的核心動作，提供肌群、動作型態、建議次數、疲勞成本與教學提示。</div>
-          <div class="chip-row acsm-chip-row" id="science-acsm-exercise-picker"></div>
-          <div class="acsm-detail" id="science-acsm-exercise-detail"></div>
+          <div id="science-acsm-exercise-body" class="acsm-exercise-body hidden">
+            <input type="search" id="science-acsm-exercise-search" class="acsm-search" placeholder="搜尋動作、肌群、動作型態…" autocomplete="off">
+            <div class="chip-row acsm-chip-row" id="science-acsm-exercise-picker"></div>
+            <div class="acsm-count-footnote" id="science-acsm-exercise-footnote"></div>
+            <div class="acsm-detail" id="science-acsm-exercise-detail"></div>
+          </div>
         </div>
         <div class="card pad stack acsm-card">
           <div class="row between wrap"><h2 class="card-title">內建課表的 ACSM 依據</h2><span class="pill" id="science-acsm-program-count">—</span></div>
@@ -354,7 +358,7 @@
     <main class="screen" id="screen-settings">
       <div class="hdr"><div class="row"><button class="icon-btn" data-action="back-home" aria-label="返回首頁">‹</button><div class="hdr-title"><strong>設定</strong><span>資料管理與版本資訊</span></div></div></div>
       <section class="settings-list">
-        <div class="settings-row"><div class="kv"><div class="k">版本</div><div class="v" id="settings-version-value">5.0.2-stable</div></div><div class="footnote">Stable · Personal + Coach</div><div class="mono" id="settings-data-stats">—</div></div>
+        <div class="settings-row"><div class="kv"><div class="k">版本</div><div class="v" id="settings-version-value">5.0.3-stable</div></div><div class="footnote">Stable · Personal + Coach</div><div class="mono" id="settings-data-stats">—</div></div>
         <div class="settings-row"><div class="kv"><div class="k">教練模式捷徑</div><div class="v">主入口已移至首頁「教練模式」，此為備用連結</div></div><button class="btn ghost" data-action="open-coach-clients">開啟</button></div>
         <div class="settings-row"><div class="kv"><div class="k">資料備份</div><div class="v">完整備份 JSON（self + coach）</div></div><div class="toolbar"><button class="btn" data-action="export-data">匯出完整備份</button><label class="btn">匯入資料<input id="import-file" type="file" accept="application/json" class="hidden"></label></div></div>
         <div class="settings-row danger-zone"><div class="kv"><div class="k">危險操作</div><div class="v">清空所有 localStorage 資料</div></div><button class="btn danger" data-action="wipe-data">清空資料</button></div>
