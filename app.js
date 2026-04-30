@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.1.1-stable';
+const APP_VERSION='5.1.2-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -3665,6 +3665,24 @@ const SC={
       const pending=Workspace.coachFeedbackPending?Workspace.coachFeedbackPending():[];
       fbSub.textContent=(unread.length||pending.length)?`未讀 ${unread.length} · 待追蹤 ${pending.length}`:'尚無回報';
     }
+    // V5.1.2: coach home draft card
+    const coachDraft=$('#coach-home-draft-card');
+    if(coachDraft){
+      const cs=CWK.session;
+      if(cs){
+        const total=SC.countCoachWorkoutSets?SC.countCoachWorkoutSets(cs):0;
+        const done=SC.countCoachCompletedSets?SC.countCoachCompletedSets(cs):0;
+        const clientObj=Clients.byId(cs.clientId);
+        const clientName=clientObj?clientObj.name:(cs.clientName||cs.clientId||'學員');
+        const el=$('#coach-home-draft-client');if(el)el.textContent=clientName;
+        const ep=$('#coach-home-draft-program');if(ep)ep.textContent=cs.programName||'—';
+        const et=$('#coach-home-draft-time');if(et)et.textContent=cs.startedAt?Utils.formatDateTime(cs.startedAt):'—';
+        const es=$('#coach-home-draft-sets');if(es)es.textContent=`${done} / ${total} 組`;
+        coachDraft.classList.remove('hidden');
+      }else{
+        coachDraft.classList.add('hidden');
+      }
+    }
   },
   programSearchQ:'',
   programFilter:'all',
@@ -4192,6 +4210,8 @@ function handleAction(action,el){
       Nav.go('screen-coach-workout');
       break;
     }
+    case 'coach-resume-workout':if(!CWK.session){Toast.show('沒有未完成上課');const cd=$('#coach-home-draft-card');if(cd)cd.classList.add('hidden');break}SC.renderCoachWorkout();Nav.go('screen-coach-workout');break;
+    case 'coach-discard-workout-draft':if(!CWK.session){Toast.show('沒有未完成上課');break}if(confirm('捨棄此未完成上課？這會清除教練草稿。')){CWK.discard();SC.renderHomeCoach();Toast.show('已捨棄未完成上課')}break;
     case 'leave-coach-workout':SC.leaveCoachWorkout();break;
     case 'finish-coach-workout':SC.finishCoachWorkout();break;
     case 'coach-finish-save-only':SC.finishCoachWorkoutSaveOnly();break;
@@ -5159,6 +5179,21 @@ SC.renderCoachClientDetail=function(){
         const metaHtml=metaParts.map(t=>`<span>${Utils.escape(t)}</span>`).join('');
         return `<div class="item"><h3>${Utils.escape(prog)}</h3><div class="meta">${metaHtml}</div></div>`;
       }).join('');
+    }
+  }
+
+  // V5.1.2: in-progress session hint for this client (read-only CTA)
+  const draftHintEl=$('#coach-client-detail-draft-hint');
+  if(draftHintEl){
+    const cs=CWK.session;
+    if(cs&&cs.clientId===client.id){
+      const total=SC.countCoachWorkoutSets?SC.countCoachWorkoutSets(cs):0;
+      const done=SC.countCoachCompletedSets?SC.countCoachCompletedSets(cs):0;
+      draftHintEl.innerHTML=`<div class="coach-client-draft-hint"><div class="coach-client-draft-hint-body"><span class="coach-client-draft-label">此學員有未完成上課</span><span class="coach-client-draft-meta">${Utils.escape(cs.programName||'—')} · ${done} / ${total} 組</span></div><button class="btn primary" data-action="coach-resume-workout">繼續上課</button></div>`;
+      draftHintEl.classList.remove('hidden');
+    }else{
+      draftHintEl.innerHTML='';
+      draftHintEl.classList.add('hidden');
     }
   }
 

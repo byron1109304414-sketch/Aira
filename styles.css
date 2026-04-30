@@ -7532,3 +7532,313 @@ body{
 /* ============================================================
    End Section 67.  (v5.1.1 · ACSM polish & new surfaces)
    ============================================================ */
+
+/* ============================================================
+   Section 68 — V5.1.2 workout operation contrast
+   Scope A : #screen-workout  (self workout high-contrast mode)
+   Scope B : coach-home-draft card
+   Scope C : coach-client-detail draft hint
+   Scope D : #screen-coach-workout / .coach-workout-* visual polish
+   No changes to JS logic, DB/WK/CWK schema, or other screens.
+   ============================================================ */
+
+/* ---- A. Self workout — active card boost ---- */
+#screen-workout .exercise-card {
+  border-color: rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  transition: border-color .15s, background .15s, opacity .15s;
+}
+#screen-workout .exercise-card.active {
+  border-color: rgba(105,183,255,.55);
+  background: rgba(105,183,255,.07);
+  box-shadow: 0 0 0 1px rgba(105,183,255,.18) inset;
+}
+#screen-workout .exercise-card.collapsed {
+  opacity: .55;
+  border-color: rgba(255,255,255,.06);
+  background: rgba(255,255,255,.015);
+}
+#screen-workout .exercise-card.collapsed:hover,
+#screen-workout .exercise-card.collapsed:focus-within {
+  opacity: .85;
+}
+
+/* step-chip active — clearer highlight */
+#screen-workout .step-chip.active {
+  background: rgba(105,183,255,.22);
+  border-color: rgba(105,183,255,.55);
+  color: #e8f4ff;
+  box-shadow: 0 0 0 1px rgba(105,183,255,.25) inset;
+}
+
+/* set-row done — more visible green */
+#screen-workout .set-row.done {
+  border-color: rgba(97,214,157,.40);
+  background: rgba(97,214,157,.10);
+}
+#screen-workout .set-row.done .set-index {
+  background: rgba(97,214,157,.20);
+  color: #7ef5b8;
+}
+#screen-workout .set-row.done .done-mark {
+  background: rgba(97,214,157,.25);
+  border-color: rgba(97,214,157,.55);
+  color: #a0ffce;
+}
+
+/* weight / reps inputs — brighter, easier to tap */
+#screen-workout .set-row .field input {
+  background: rgba(255,255,255,.09);
+  border-color: rgba(255,255,255,.18);
+  color: #f0f6ff;
+  font-size: 17px;
+  font-weight: 800;
+}
+#screen-workout .set-row .field input:focus {
+  background: rgba(105,183,255,.13);
+  border-color: rgba(105,183,255,.55);
+  color: #fff;
+  outline: none;
+}
+
+/* done-mark (undone state) — more tappable */
+#screen-workout .done-mark {
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* workout quick-actions — clearer button tiers */
+#screen-workout .workout-quick-actions .btn[data-action="add-set"] {
+  background: rgba(105,183,255,.18);
+  border-color: rgba(105,183,255,.40);
+  color: #d0eaff;
+  font-weight: 700;
+}
+#screen-workout .workout-quick-actions .btn[data-action="swap-exercise"] {
+  opacity: .80;
+}
+#screen-workout .workout-quick-actions .btn[data-action="remove-workout-exercise"] {
+  opacity: .60;
+  color: var(--danger, #ff6b6b);
+}
+
+/* wt-bar / step-bar in workout — slightly brighter label */
+#screen-workout .wt-bar-top,
+#screen-workout .step-bar {
+  color: rgba(255,255,255,.75);
+}
+
+/* ---- B. Coach home draft card ---- */
+.coach-home-draft {
+  margin: 12px 16px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,185,80,.35);
+  background: rgba(255,185,80,.07);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.coach-home-draft.hidden { display: none; }
+.coach-home-draft-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.coach-home-draft-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,200,100,.95);
+  letter-spacing: .02em;
+  margin-bottom: 2px;
+}
+.coach-home-draft-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.coach-home-draft-label {
+  color: var(--muted-2);
+  font-weight: 700;
+  min-width: 28px;
+}
+.coach-home-draft-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.coach-home-draft-actions .btn {
+  font-size: 13px;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+/* ---- C. Coach client detail draft hint ---- */
+.coach-client-draft-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,185,80,.35);
+  background: rgba(255,185,80,.07);
+  padding: 12px 14px;
+  margin-bottom: 4px;
+}
+.coach-client-draft-hint-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.coach-client-draft-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255,200,100,.95);
+}
+.coach-client-draft-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+#coach-client-detail-draft-hint.hidden { display: none; }
+
+/* ---- D. Coach workout — present visual polish ---- */
+
+/* summary panel — console feel */
+#screen-coach-workout .coach-workout-summary {
+  border-color: rgba(105,183,255,.22);
+  background: rgba(105,183,255,.05);
+}
+#screen-coach-workout .coach-workout-summary-cell {
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+}
+#screen-coach-workout .coach-workout-summary-cell .k {
+  color: rgba(255,255,255,.50);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#screen-coach-workout .coach-workout-summary-cell .v {
+  color: #e8f0ff;
+  font-weight: 800;
+}
+#screen-coach-workout .coach-workout-summary-cell .v.num {
+  color: #a8d4ff;
+  font-size: 20px;
+}
+
+/* progress text — bolder */
+#screen-coach-workout .coach-workout-progress-top {
+  font-weight: 800;
+  font-size: 13px;
+  color: rgba(255,255,255,.80);
+}
+
+/* exercise card — active/collapsed tiers */
+#screen-coach-workout .coach-workout-exercise {
+  border-color: rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  transition: border-color .15s, background .15s, opacity .15s;
+}
+#screen-coach-workout .coach-workout-exercise:not(.collapsed) {
+  border-color: rgba(105,183,255,.45);
+  background: rgba(105,183,255,.06);
+  box-shadow: 0 0 0 1px rgba(105,183,255,.15) inset;
+}
+#screen-coach-workout .coach-workout-exercise.collapsed {
+  opacity: .52;
+  border-color: rgba(255,255,255,.06);
+  background: rgba(255,255,255,.015);
+}
+#screen-coach-workout .coach-workout-exercise.collapsed:hover,
+#screen-coach-workout .coach-workout-exercise.collapsed:focus-within {
+  opacity: .82;
+}
+#screen-coach-workout .coach-workout-exercise-name {
+  color: #e8f0ff;
+  font-weight: 800;
+}
+
+/* set rows — inputs more visible */
+#screen-coach-workout .coach-set-row .field input {
+  background: rgba(255,255,255,.09);
+  border-color: rgba(255,255,255,.18);
+  color: #f0f6ff;
+  font-size: 17px;
+  font-weight: 800;
+}
+#screen-coach-workout .coach-set-row .field input:focus {
+  background: rgba(105,183,255,.13);
+  border-color: rgba(105,183,255,.55);
+  color: #fff;
+  outline: none;
+}
+
+/* done set rows */
+#screen-coach-workout .coach-set-row.done {
+  border-color: rgba(97,214,157,.40);
+  background: rgba(97,214,157,.10);
+}
+#screen-coach-workout .coach-set-row.done .coach-set-index {
+  background: rgba(97,214,157,.20);
+  color: #7ef5b8;
+}
+#screen-coach-workout .coach-set-row.done .coach-set-done-mark {
+  background: rgba(97,214,157,.25);
+  border-color: rgba(97,214,157,.55);
+  color: #a0ffce;
+}
+
+/* done mark (undone) */
+#screen-coach-workout .coach-set-done-mark {
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* exercise tools — button tiers: addset primary, swap secondary, remove danger */
+#screen-coach-workout .coach-workout-exercise-tools .coach-workout-tool-addset {
+  background: rgba(105,183,255,.18);
+  border-color: rgba(105,183,255,.40);
+  color: #d0eaff;
+  font-weight: 700;
+}
+#screen-coach-workout .coach-workout-exercise-tools .coach-workout-tool-swap {
+  opacity: .80;
+}
+#screen-coach-workout .coach-workout-exercise-tools .coach-workout-tool-remove {
+  opacity: .65;
+  color: var(--danger, #ff6b6b);
+  border-color: rgba(255,107,107,.25);
+}
+#screen-coach-workout .coach-workout-exercise-tools .coach-workout-tool-remove:hover {
+  opacity: 1;
+  background: rgba(255,107,107,.12);
+}
+
+/* move buttons — subtle secondary */
+#screen-coach-workout .coach-workout-exercise-order .btn {
+  opacity: .70;
+  font-size: 12px;
+}
+#screen-coach-workout .coach-workout-exercise-order .btn:not([disabled]):hover {
+  opacity: 1;
+}
+#screen-coach-workout .coach-workout-exercise-order .btn[disabled] {
+  opacity: .25;
+}
+
+/* ============================================================
+   End Section 68.  (v5.1.2 · workout contrast + coach draft flow)
+   ============================================================ */
