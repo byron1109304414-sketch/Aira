@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.1.4-stable';
+const APP_VERSION='5.2.0-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -4154,11 +4154,12 @@ function handleAction(action,el){
     case 'open-coach-client-detail':SC.openCoachClientDetail(el.dataset.id);break;
     case 'back-coach-client-detail':Nav.go('screen-coach-clients');break;
     case 'coach-client-detail-edit':if(SC.coachCurrentClientId)SC.openCoachClientSheet(SC.coachCurrentClientId);break;
-    case 'coach-client-detail-start':SC.startCoachSessionForClient(el.dataset.id||SC.coachCurrentClientId);break;
+    case 'coach-client-detail-start':SC.coachReturnContext.workoutFrom='screen-coach-client-detail';SC.startCoachSessionForClient(el.dataset.id||SC.coachCurrentClientId);break;
     case 'coach-client-detail-open-program':{
       const cid=el.dataset.id||SC.coachCurrentClientId||'';
       if(!cid){Toast.show('請先選擇學員');break}
       SC.coachCurrentClientId=cid;
+      SC.coachReturnContext.programsFrom='screen-coach-client-detail';
       const active=(typeof SC.getCoachActiveProgram==='function')?SC.getCoachActiveProgram(cid):null;
       if(active){SC.openCoachProgramEditor(active.id)}
       else{Nav.go('screen-coach-programs');Toast.show('此學員尚未設定使用中課表')}
@@ -4177,8 +4178,8 @@ function handleAction(action,el){
     case 'coach-feedback-mark-viewed':SC.markCoachFeedbackViewed(el.dataset.id,el.dataset.viewed);break;
     case 'coach-feedback-toggle-followup':SC.toggleCoachFeedbackFollowUp(el.dataset.id);break;
     case 'coach-feedback-jump-client':SC.jumpCoachFeedbackClient(el.dataset.id);break;
-    case 'open-coach-programs':SC.coachCurrentClientId=el.dataset.id||SC.coachCurrentClientId||'';Nav.go('screen-coach-programs');break;
-    case 'back-coach-programs':Nav.go('screen-coach-clients');break;
+    case 'open-coach-programs':SC.coachCurrentClientId=el.dataset.id||SC.coachCurrentClientId||'';SC._setCoachReturnFor('programsFrom');Nav.go('screen-coach-programs');break;
+    case 'back-coach-programs':Nav.go(SC.coachReturnContext.programsFrom||'screen-coach-clients');break;
     case 'coach-new-program':SC.openCoachProgramEditor(null);break;
     case 'coach-edit-program':SC.openCoachProgramEditor(el.dataset.id);break;
     case 'coach-save-program':SC.saveCoachProgramFromEditor();break;
@@ -4212,11 +4213,12 @@ function handleAction(action,el){
       }else{
         CWK.start(clientId,{programId:active.id});
       }
+      SC._setCoachReturnFor('workoutFrom');
       Nav.go('screen-coach-workout');
       break;
     }
     case 'coach-delete-session':{const sid=el.dataset.id;if(!sid)break;if(!confirm('確定刪除此教練課程紀錄？此操作無法復原。'))break;SC.deleteCoachSession(sid);break}
-    case 'coach-resume-workout':if(!CWK.session){Toast.show('沒有未完成上課');const cd=$('#coach-home-draft-card');if(cd)cd.classList.add('hidden');break}SC.renderCoachWorkout();Nav.go('screen-coach-workout');break;
+    case 'coach-resume-workout':if(!CWK.session){Toast.show('沒有未完成上課');const cd=$('#coach-home-draft-card');if(cd)cd.classList.add('hidden');break}SC.coachReturnContext.workoutFrom=(Nav.cur==='screen-coach-client-detail')?'screen-coach-client-detail':'';if(CWK.session.clientId)SC.coachCurrentClientId=CWK.session.clientId;SC.renderCoachWorkout();Nav.go('screen-coach-workout');break;
     case 'coach-discard-workout-draft':if(!CWK.session){Toast.show('沒有未完成上課');break}if(confirm('捨棄此未完成上課？這會清除教練草稿。')){CWK.discard();SC.renderHomeCoach();Toast.show('已捨棄未完成上課')}break;
     case 'leave-coach-workout':SC.leaveCoachWorkout();break;
     case 'finish-coach-workout':SC.finishCoachWorkout();break;
@@ -4247,8 +4249,8 @@ function handleAction(action,el){
     case 'coach-copy-program-ai-prompt':SC.copyCoachProgramAiPrompt();break;
     case 'coach-export-program-md':SC.exportCoachProgramMarkdown();break;
     case 'coach-export-program-json':SC.exportCoachProgramJson();break;
-    case 'open-coach-reports':SC.openCoachReports(el.dataset.id);break;
-    case 'back-coach-reports':Nav.go('screen-coach-clients');break;
+    case 'open-coach-reports':SC._setCoachReturnFor('reportsFrom');SC.openCoachReports(el.dataset.id);break;
+    case 'back-coach-reports':Nav.go(SC.coachReturnContext.reportsFrom||'screen-coach-clients');break;
     case 'coach-open-session-report':SC.openCoachSessionReport(el.dataset.id);break;
     case 'coach-close-session-report':SC.closeCoachSessionReport();break;
     case 'coach-report-preview-coach':SC.setCoachSessionReportPreviewMode('coach');break;
@@ -5447,6 +5449,36 @@ SC.startCoachSessionForClient=function(clientId){
 
 // ---- Client Coaching Module v1 · Step 3: Client Program Management UI ----
 SC.coachCurrentClientId='';
+// V5.2.0: in-memory navigation return context for coach flow.
+// Tracks where the user entered each downstream coach screen from,
+// so back/leave/finish can return to the correct context. Never
+// persisted (no localStorage / no CDB write). Reload-safe via fallbacks.
+SC.coachReturnContext={programsFrom:'',reportsFrom:'',workoutFrom:''};
+SC._setCoachReturnFor=function(key){
+  if(!SC.coachReturnContext)SC.coachReturnContext={programsFrom:'',reportsFrom:'',workoutFrom:''};
+  const cur=(typeof Nav!=='undefined'&&Nav&&Nav.cur)?Nav.cur:'';
+  if(cur==='screen-coach-client-detail')SC.coachReturnContext[key]='screen-coach-client-detail';
+  else if(cur==='screen-coach-programs'&&key==='workoutFrom')SC.coachReturnContext[key]='screen-coach-programs';
+  else SC.coachReturnContext[key]='';
+};
+SC._coachWorkoutLeaveTarget=function(){
+  const ctx=SC.coachReturnContext||{};
+  if(ctx.workoutFrom==='screen-coach-client-detail'){
+    if(SC.coachCurrentClientId||(CWK.session&&CWK.session.clientId)){
+      if(CWK.session&&CWK.session.clientId)SC.coachCurrentClientId=CWK.session.clientId;
+      return 'screen-coach-client-detail';
+    }
+    return 'screen-home';
+  }
+  if(ctx.workoutFrom==='screen-coach-programs')return 'screen-coach-programs';
+  if(CWK.session&&CWK.session.clientId){SC.coachCurrentClientId=CWK.session.clientId;return 'screen-coach-client-detail'}
+  return 'screen-home';
+};
+SC._coachFinishTarget=function(s){
+  const cid=(s&&s.clientId)||SC.coachCurrentClientId||'';
+  if(cid){SC.coachCurrentClientId=cid;return 'screen-coach-client-detail'}
+  return 'screen-home';
+};
 SC.coachEditingProgramId='';
 SC.coachEditingProgram=null;
 SC.coachProgramPickerOpen=false;
@@ -5542,6 +5574,9 @@ SC.renderCoachProgramsSummary=function(){
   const active=programs.find(p=>p.isActive);
   const clientName=client?(client.name||'Unnamed Client'):'未選擇學員';
   const activeName=active?(active.name||'Untitled Client Program'):'尚未設定';
+  // V5.2.0: header subtitle reflects current client context
+  const subEl=$('#coach-programs-sub');
+  if(subEl)subEl.textContent=client?`Client Programs · ${clientName}`:'Client Programs';
   box.innerHTML=`<div class="coach-program-summary-grid"><div class="coach-program-summary-cell"><div class="k">學員</div><div class="v">${Utils.escape(clientName)}</div></div><div class="coach-program-summary-cell"><div class="k">使用中課表</div><div class="v">${Utils.escape(activeName)}</div></div><div class="coach-program-summary-cell"><div class="k">課表總數</div><div class="v num">${programs.length}</div></div></div>`;
 };
 
@@ -5618,7 +5653,7 @@ SC.openCoachProgramEditor=function(programId){
   const title=$('#coach-program-editor-title');
   const sub=$('#coach-program-editor-sub');
   const client=Clients.byId(this.coachEditingProgram.clientId)||null;
-  if(title)title.textContent=programId?'編輯課表':'新增課表';
+  if(title)title.textContent=client?(programId?`編輯 ${client.name||'Unnamed Client'} 的課表`:`為 ${client.name||'Unnamed Client'} 新增課表`):(programId?'編輯課表':'新增課表');
   if(sub)sub.textContent=client?(client.name||'Unnamed Client'):'Client Program';
   const nameInput=$('#coach-program-editor-name');if(nameInput)nameInput.value=this.coachEditingProgram.name||'';
   const noteInput=$('#coach-program-editor-note');if(noteInput)noteInput.value=this.coachEditingProgram.note||'';
@@ -6275,7 +6310,7 @@ SC.renderCoachWorkoutSetRow=function(set,exerciseIndex,setIndex){
 
 SC.leaveCoachWorkout=function(){
   this.stopCoachWorkoutTimer();
-  Nav.go('screen-coach-programs');
+  Nav.go(this._coachWorkoutLeaveTarget());
 };
 
 // ---- Client Coaching Module v1 · Final Patch · Coach Finish Sync-Back ----
@@ -6397,13 +6432,14 @@ SC.closeCoachFinishSyncSheet=function(){
 
 SC.finishCoachWorkoutSaveOnly=function(){
   const s=CWK.session;if(!s)return;
+  const target=this._coachFinishTarget(s);
   s.status='complete';
   s.finishedAt=CWK._now();
   CWK.finish();
   this.stopCoachWorkoutTimer();
   this.closeCoachFinishSyncSheet();
   this.renderCoachPrograms();
-  Nav.go('screen-coach-programs');
+  Nav.go(target);
   Toast.show('已完成訓練');
 };
 
@@ -6417,6 +6453,7 @@ SC.finishCoachWorkoutAndSyncProgram=function(){
     Toast.show('使用中課表已變更，僅儲存本次紀錄');
     return;
   }
+  const target=this._coachFinishTarget(s);
   const updated=this.buildCoachProgramFromSessionStructure(s,activeProgram);
   s.status='complete';
   s.finishedAt=CWK._now();
@@ -6425,7 +6462,7 @@ SC.finishCoachWorkoutAndSyncProgram=function(){
   try{CPS.save(updated)}catch(err){console.error('coach program sync error',err)}
   this.closeCoachFinishSyncSheet();
   this.renderCoachPrograms();
-  Nav.go('screen-coach-programs');
+  Nav.go(target);
   Toast.show('已完成訓練並同步課表');
 };
 
