@@ -8,7 +8,7 @@
 // ================================================================
 // 1. CONSTANTS
 // ================================================================
-const APP_VERSION='5.1.3-stable';
+const APP_VERSION='5.1.4-stable';
 const APP_KEY='aira_tracker_v4';
 const DRAFT_KEY='aira_tracker_v4_draft';
 const V3_APP_KEY='aira_tracker_v3';
@@ -3655,7 +3655,8 @@ const SC={
           const name=s.clientName||'—';
           const prog=s.programName||'—';
           const statusTxt=s.status==='complete'?'已完成':(s.status==='in_progress'?'進行中':(s.status||''));
-          return `<div class="item"><h3>${Utils.escape(name)}</h3><div class="meta"><span>${Utils.escape(prog)}</span><span>${Utils.escape(dateText)}</span><span>${Utils.escape(statusTxt)}</span></div></div>`;
+          const delBtn=s.id?`<button class="btn danger coach-session-delete-btn" data-action="coach-delete-session" data-id="${Utils.escape(s.id)}">刪除</button>`:'';
+          return `<div class="item"><div class="row between wrap"><div><h3>${Utils.escape(name)}</h3><div class="meta"><span>${Utils.escape(prog)}</span><span>${Utils.escape(dateText)}</span><span>${Utils.escape(statusTxt)}</span></div></div>${delBtn}</div></div>`;
         }).join('');
       }
     }
@@ -3838,6 +3839,7 @@ const SC={
   },
   renderStrength(){const exs=Array.from(new Set(DB.data.workouts.flatMap(w=>(w.exercises||[]).map(e=>e.exerciseKey||resolveKey(e.name||''))))).sort();const defs=['barbell_bench_press','back_squat','conventional_deadlift','romanian_deadlift','pull_up'];const opts=exs.length?exs:defs;if(!opts.includes(this.strEx))this.strEx=opts[0];$('#strength-selector').innerHTML=opts.map(k=>`<button class="chip ${k===this.strEx?'active':''}" data-action="select-strength" data-name="${k}">${Utils.escape(exLabel(k))}</button>`).join('');$('#strength-chart-title').textContent=exLabel(this.strEx);const pts=DB.data.workouts.map(w=>{const e=(w.exercises||[]).find(x=>(x.exerciseKey||resolveKey(x.name||''))===this.strEx);if(!e)return null;const v=WK.e1rm(e);if(!v)return null;return{x:w.startedAt,y:v}}).filter(Boolean).reverse();drawChart($('#strength-canvas'),pts,{suffix:' kg'});$('#strength-footnote').textContent=pts.length?`共 ${pts.length} 筆資料。`:'尚無資料。'},
   deleteSession(id){if(!id)return;const idx=DB.data.workouts.findIndex(w=>w.id===id);if(idx<0)return;DB.data.workouts.splice(idx,1);DB.save();if(this.detId===id)this.detId='';this.renderHistory();this.renderHome();this.renderStrength();Toast.show('已刪除訓練紀錄')},
+  deleteCoachSession(id){if(!id)return;if(!CDB.data)CDB.load();const idx=(CDB.data.clientSessions||[]).findIndex(s=>s.id===id);if(idx<0)return;CDB.data.clientSessions.splice(idx,1);CDB.save();this.renderHomeCoach();if(Nav.cur==='screen-coach-client-detail')this.renderCoachClientDetail();if(Nav.cur==='screen-coach-reports')this.renderCoachReports();Toast.show('已刪除教練課程紀錄')},
   renderWeight(){const l=$('#weight-list');const items=DB.data.weightEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));$('#weight-count').textContent=`${items.length} 筆`;if(!items.length)l.innerHTML='<div class="empty">尚未記錄體重</div>';else l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${i.weight} kg</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span></div></div><button class="btn danger" data-action="delete-weight" data-date="${i.date}">刪除</button></div></div>`).join('');drawChart($('#weight-canvas'),items.slice().reverse().map(i=>({x:i.date,y:Number(i.weight)})),{suffix:' kg'})},
   renderCardio(){const items=DB.data.cardioEntries.slice().sort((a,b)=>b.date.localeCompare(a.date));const l=$('#cardio-list');if(!items.length){l.innerHTML='<div class="empty">尚未記錄有氧</div>';return}l.innerHTML=items.map(i=>`<div class="item"><div class="row between wrap"><div><h3>${Utils.escape(i.type||'Cardio')}</h3><div class="meta"><span>${Utils.formatDate(i.date)}</span>${i.minutes?`<span>${i.minutes} 分鐘</span>`:''}${i.distance?`<span>${i.distance} km</span>`:''}${i.calories?`<span>${i.calories} kcal</span>`:''}</div>${i.note?`<div class="subtle" style="margin-top:8px">${Utils.escape(i.note)}</div>`:''}</div><button class="btn danger" data-action="delete-cardio" data-id="${i.id}">刪除</button></div></div>`).join('')},
   renderScience(){const p=Sci.profile();const g=Sci.goal(p.goal);$('#science-profile-badge').textContent=Sci.badge(p);$('#science-top').innerHTML=Sci.weeklyTargets(p).map(i=>`<div class="summary-card"><div class="k">${Utils.escape(i.key)}</div><div class="v" style="font-size:18px">${Utils.escape(i.value)}</div></div>`).join('');$('#science-goal').value=p.goal;$('#science-level').value=p.level;$('#science-session-min').value=p.sessionMin;$('#science-equipment').value=p.equipment;$('#science-knee').checked=!!p.knee;$('#science-shoulder').checked=!!p.shoulder;$('#science-lowback').checked=!!p.lowBack;const recs=Sci.topPrograms(3);$('#science-recommendation-label').textContent=g.badge;$('#science-recommendations').innerHTML=recs.map(({program:pr,score:sc},i)=>{const rationale=this._buildScienceRecRationale(pr);return`<div class="item"><div class="row between wrap"><div style="min-width:0"><h3>${i+1}. ${Utils.escape(pr.name)}</h3><div class="meta"><span>${Utils.escape(pr.category||'Program')}</span><span>${(pr.exercises||[]).length} 動作</span><span>適配 ${sc.toFixed(1)}</span>${pr.builtIn?'<span class="pill pill-evidence">ACSM</span>':''}</div><div class="subtle" style="margin-top:8px">${Utils.escape(pr.note||'符合目前目標。')}</div>${rationale}</div><button class="btn primary" data-action="apply-recommended-program" data-id="${pr.id}">套用</button></div></div>`}).join('');$('#science-rules-list').innerHTML=Sci.rules(p).map(r=>`<div class="muted-box science-note">${Utils.escape(r)}</div>`).join('');this.renderScienceAcsm()},
@@ -4213,6 +4215,7 @@ function handleAction(action,el){
       Nav.go('screen-coach-workout');
       break;
     }
+    case 'coach-delete-session':{const sid=el.dataset.id;if(!sid)break;if(!confirm('確定刪除此教練課程紀錄？此操作無法復原。'))break;SC.deleteCoachSession(sid);break}
     case 'coach-resume-workout':if(!CWK.session){Toast.show('沒有未完成上課');const cd=$('#coach-home-draft-card');if(cd)cd.classList.add('hidden');break}SC.renderCoachWorkout();Nav.go('screen-coach-workout');break;
     case 'coach-discard-workout-draft':if(!CWK.session){Toast.show('沒有未完成上課');break}if(confirm('捨棄此未完成上課？這會清除教練草稿。')){CWK.discard();SC.renderHomeCoach();Toast.show('已捨棄未完成上課')}break;
     case 'leave-coach-workout':SC.leaveCoachWorkout();break;
@@ -5180,7 +5183,8 @@ SC.renderCoachClientDetail=function(){
         const durTxt=Number.isFinite(s.durationMin)&&s.durationMin>0?`${s.durationMin} 分`:'';
         const metaParts=[dateText,statusTxt,durTxt].filter(Boolean);
         const metaHtml=metaParts.map(t=>`<span>${Utils.escape(t)}</span>`).join('');
-        return `<div class="item"><h3>${Utils.escape(prog)}</h3><div class="meta">${metaHtml}</div></div>`;
+        const delBtn=s.id?`<button class="btn danger coach-session-delete-btn" data-action="coach-delete-session" data-id="${Utils.escape(s.id)}">刪除</button>`:'';
+        return `<div class="item"><div class="row between wrap"><div><h3>${Utils.escape(prog)}</h3><div class="meta">${metaHtml}</div></div>${delBtn}</div></div>`;
       }).join('');
     }
   }
