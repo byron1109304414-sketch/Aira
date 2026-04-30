@@ -7842,3 +7842,93 @@ body{
 /* ============================================================
    End Section 68.  (v5.1.2 · workout contrast + coach draft flow)
    ============================================================ */
+
+/* ============================================================
+   Section 72 — V5.2.1 full-app QA polish
+   Scope : history item delete actions · coach session delete buttons ·
+           detail header overflow · coach home draft mobile guard ·
+           coach-programs context overflow.
+   No structural changes. No token changes. No new design system.
+   ============================================================ */
+
+/* ---- A. history list — actions wrapper ---- */
+/* Ensure 詳情 + 刪除 sit horizontally with breathing room and don't
+   overflow on narrow screens. Wraps below 360px. */
+#screen-history .history-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+#screen-history .history-item-actions .btn {
+  white-space: nowrap;
+}
+/* De-emphasise the destructive button so it doesn't compete with 詳情. */
+#screen-history .history-delete-btn {
+  opacity: .82;
+  font-weight: 600;
+}
+#screen-history .history-delete-btn:hover {
+  opacity: 1;
+}
+
+/* ---- B. coach session delete buttons — recent lists ---- */
+/* Coach home recent + client detail recent · keep delete subtle. */
+.coach-session-delete-btn {
+  opacity: .80;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.coach-session-delete-btn:hover { opacity: 1; }
+
+/* ---- C. detail screen header — prevent overflow on tiny widths ---- */
+#screen-detail .hdr { gap: 8px; }
+#screen-detail #detail-delete-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 360px) {
+  #screen-detail #detail-delete-btn {
+    font-size: 12px;
+    padding-inline: 10px;
+  }
+}
+
+/* ---- D. coach home draft card — mobile guard ---- */
+@media (max-width: 380px) {
+  .coach-home-draft {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .coach-home-draft-actions {
+    flex-direction: row;
+    justify-content: stretch;
+  }
+  .coach-home-draft-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- E. coach context subtitle — long client names ---- */
+/* Coach Programs / Editor / Workout headers may render
+   "Client Programs · 王小明" style subtitles; keep them on one line
+   with ellipsis on narrow screens. */
+#coach-programs-sub,
+#coach-program-editor-sub,
+#coach-workout-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+/* ---- F. client detail recent list — wrap actions on narrow widths ---- */
+#screen-coach-client-detail .coach-client-detail-recent .item .row.between.wrap {
+  gap: 8px;
+}
+
+/* ============================================================
+   End Section 72.  (v5.2.1 · QA polish)
+   ============================================================ */
